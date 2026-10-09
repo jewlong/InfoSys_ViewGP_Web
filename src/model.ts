@@ -1,0 +1,349 @@
+export type Kind =
+  | "text"
+  | "rectangle"
+  | "circle"
+  | "line"
+  | "image"
+  | "button"
+  | "indicator"
+  | "number"
+  | "input"
+  | "switch";
+export type Variable = {
+  id: string;
+  name: string;
+  type: "number" | "boolean" | "string";
+  category?: string;
+  initial: number | boolean | string;
+};
+export type Element = {
+  id: string;
+  kind: Kind;
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  text: string;
+  color: string;
+  background: string;
+  fontSize: number;
+  variableId?: string;
+  action: "toggle" | "set" | "increment" | "screen";
+  actionValue: string;
+  targetScreenId?: string;
+  locked: boolean;
+  visible: boolean;
+  groupId?: string;
+  image?: string;
+  unit?: string;
+  decimals?: number;
+  conditionId?: string;
+  enabledId?: string;
+};
+export type Screen = {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  background: string;
+  elements: Element[];
+};
+export type Project = {
+  schemaVersion: 1;
+  id: string;
+  name: string;
+  description: string;
+  startScreenId: string;
+  screens: Screen[];
+  variables: Variable[];
+};
+export const uid = () => crypto.randomUUID();
+export const labels: Record<Kind, string> = {
+  text: "文字",
+  rectangle: "矩形",
+  circle: "圓形",
+  line: "直線",
+  image: "圖片",
+  button: "按鈕",
+  indicator: "指示燈",
+  number: "數值顯示",
+  input: "數值輸入",
+  switch: "開關",
+};
+export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
+  id: uid(),
+  kind,
+  name: labels[kind],
+  x,
+  y,
+  width:
+    kind === "line"
+      ? 160
+      : kind === "indicator"
+        ? 44
+        : kind === "circle"
+          ? 80
+          : 160,
+  height:
+    kind === "line"
+      ? 4
+      : kind === "indicator"
+        ? 44
+        : kind === "circle"
+          ? 80
+          : 48,
+  text:
+    kind === "button" ? "啟動" : kind === "text" ? "文字內容" : labels[kind],
+  color: "#e2e8f0",
+  background:
+    kind === "button"
+      ? "#5268ee"
+      : kind === "rectangle"
+        ? "#26344d"
+        : "#18263b",
+  fontSize: kind === "number" ? 32 : 16,
+  action: "toggle",
+  actionValue: "1",
+  locked: false,
+  visible: true,
+});
+export function newProject(): Project {
+  const id = uid();
+  return {
+    schemaVersion: 1,
+    id: uid(),
+    name: "未命名專案",
+    description: "",
+    startScreenId: id,
+    screens: [
+      {
+        id,
+        name: "主畫面",
+        width: 960,
+        height: 600,
+        background: "#101c2e",
+        elements: [],
+      },
+    ],
+    variables: [],
+  };
+}
+export function demoProject(): Project {
+  const p = newProject();
+  p.name = "智慧產線監控";
+  p.description = "Production line dashboard";
+  p.variables = [
+    { id: "running", name: "運轉狀態", type: "boolean", initial: false },
+    { id: "temperature", name: "溫度", type: "number", initial: 26.5 },
+    { id: "count", name: "生產數量", type: "number", initial: 1280 },
+    { id: "target", name: "目標數量", type: "number", initial: 2000 },
+  ];
+  const add = (kind: Kind, x: number, y: number, props: Partial<Element>) => ({
+    ...makeElement(kind, x, y),
+    ...props,
+  });
+  p.screens[0].elements = [
+    add("text", 36, 28, {
+      text: "PRODUCTION LINE  /  01",
+      width: 500,
+      height: 28,
+      fontSize: 13,
+      color: "#91a1bb",
+    }),
+    add("text", 36, 66, {
+      text: "產線即時監控",
+      width: 440,
+      height: 50,
+      fontSize: 30,
+    }),
+    add("rectangle", 36, 150, {
+      name: "溫度卡片",
+      width: 276,
+      height: 190,
+      background: "#19283e",
+    }),
+    add("rectangle", 332, 150, {
+      name: "產量卡片",
+      width: 276,
+      height: 190,
+      background: "#19283e",
+    }),
+    add("rectangle", 628, 150, {
+      name: "目標卡片",
+      width: 296,
+      height: 190,
+      background: "#19283e",
+    }),
+    add("text", 58, 174, { text: "環境溫度", color: "#91a1bb", height: 28 }),
+    add("number", 58, 219, {
+      name: "溫度數值",
+      variableId: "temperature",
+      width: 200,
+      height: 62,
+      fontSize: 44,
+      color: "#7bd8ce",
+    }),
+    add("text", 58, 290, {
+      text: "°C  /  感測器 A01",
+      fontSize: 12,
+      color: "#91a1bb",
+    }),
+    add("text", 354, 174, { text: "累計生產", color: "#91a1bb", height: 28 }),
+    add("number", 354, 219, {
+      name: "生產數量",
+      variableId: "count",
+      width: 220,
+      height: 62,
+      fontSize: 44,
+    }),
+    add("text", 354, 290, {
+      text: "PCS  /  本班次",
+      fontSize: 12,
+      color: "#91a1bb",
+    }),
+    add("text", 650, 174, { text: "目標產量", color: "#91a1bb", height: 28 }),
+    add("number", 650, 219, {
+      name: "目標數值",
+      variableId: "target",
+      width: 230,
+      height: 62,
+      fontSize: 44,
+      color: "#b7a6fa",
+    }),
+    add("text", 650, 290, {
+      text: "PCS  /  每日目標",
+      fontSize: 12,
+      color: "#91a1bb",
+    }),
+    add("rectangle", 36, 364, {
+      name: "操作面板",
+      width: 888,
+      height: 186,
+      background: "#19283e",
+    }),
+    add("text", 58, 384, { text: "設備控制", fontSize: 18 }),
+    add("indicator", 60, 446, {
+      name: "運轉指示燈",
+      variableId: "running",
+      width: 22,
+      height: 22,
+    }),
+    add("text", 98, 437, { text: "運轉狀態", color: "#91a1bb" }),
+    add("switch", 230, 435, {
+      name: "運轉開關",
+      variableId: "running",
+      width: 80,
+      height: 44,
+    }),
+    add("button", 490, 435, {
+      text: "啟動 / 停止",
+      variableId: "running",
+      width: 180,
+      height: 52,
+    }),
+    add("button", 694, 435, {
+      text: "＋ 計數",
+      variableId: "count",
+      action: "increment",
+      width: 204,
+      height: 52,
+      background: "#294452",
+      color: "#7bd8ce",
+    }),
+  ];
+  return p;
+}
+export function validateProject(value: unknown): value is Project {
+  if (!value || typeof value !== "object") return false;
+  const p = value as Project;
+  if (
+    p.schemaVersion !== 1 ||
+    typeof p.id !== "string" ||
+    typeof p.name !== "string" ||
+    typeof p.description !== "string" ||
+    !Array.isArray(p.screens) ||
+    !p.screens.length ||
+    !Array.isArray(p.variables)
+  )
+    return false;
+  const ids = new Set<string>();
+  const unique = (id: unknown) =>
+    typeof id === "string" &&
+    id.length > 0 &&
+    !ids.has(id) &&
+    (ids.add(id), true);
+  if (
+    !p.variables.every(
+      (v) =>
+        v &&
+        unique(v.id) &&
+        typeof v.name === "string" &&
+        ["number", "boolean", "string"].includes(v.type) &&
+        typeof v.initial === v.type &&
+        (v.type !== "number" || Number.isFinite(v.initial)),
+    )
+  )
+    return false;
+  return (
+    p.screens.some((s) => s && s.id === p.startScreenId) &&
+    p.screens.every(
+      (s) =>
+        s &&
+        unique(s.id) &&
+        typeof s.name === "string" &&
+        Number.isFinite(s.width) &&
+        s.width >= 100 &&
+        s.width <= 4096 &&
+        Number.isFinite(s.height) &&
+        s.height >= 100 &&
+        s.height <= 4096 &&
+        typeof s.background === "string" &&
+        Array.isArray(s.elements) &&
+        s.elements.length <= 2000 &&
+        s.elements.every(
+          (e) =>
+            e &&
+            unique(e.id) &&
+            Object.hasOwn(labels, e.kind) &&
+            ["name", "text", "color", "background", "actionValue"].every(
+              (k) => typeof e[k as keyof Element] === "string",
+            ) &&
+            ["x", "y", "width", "height", "fontSize"].every((k) =>
+              Number.isFinite(e[k as keyof Element]),
+            ) &&
+            e.width > 0 &&
+            e.height > 0 &&
+            e.width <= 4096 &&
+            e.height <= 4096 &&
+            e.x >= 0 &&
+            e.y >= 0 &&
+            e.fontSize >= 8 &&
+            e.fontSize <= 1000 &&
+            [
+              "variableId",
+              "targetScreenId",
+              "groupId",
+              "conditionId",
+              "enabledId",
+              "image",
+              "unit",
+            ].every(
+              (k) =>
+                e[k as keyof Element] === undefined ||
+                typeof e[k as keyof Element] === "string",
+            ) &&
+            (e.decimals === undefined ||
+              (Number.isInteger(e.decimals) &&
+                e.decimals >= 0 &&
+                e.decimals <= 6)) &&
+            typeof e.locked === "boolean" &&
+            typeof e.visible === "boolean" &&
+            ["toggle", "set", "increment", "screen"].includes(e.action) &&
+            (!e.image ||
+              (typeof e.image === "string" &&
+                /^data:image\/(png|jpeg|webp|gif);base64,/.test(e.image))),
+        ),
+    )
+  );
+}
