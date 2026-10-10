@@ -60,6 +60,33 @@ try {
   assert.equal(await page.locator(".canvas-element").count(), 21);
   await page.getByRole("button", { name: "重做", exact: true }).click();
   assert.equal(await page.locator(".canvas-element").count(), 22);
+  // Selection, clipboard and resize must preserve history across split hooks.
+  await page.locator(".canvas-element").nth(0).click();
+  await page
+    .locator(".canvas-element")
+    .nth(1)
+    .click({ modifiers: ["Shift"] });
+  assert.equal(await selected.count(), 2);
+  await page.keyboard.press("Control+c");
+  await page.keyboard.press("Control+v");
+  assert.equal(await page.locator(".canvas-element").count(), 24);
+  assert.equal(await selected.count(), 2);
+  await page.keyboard.press("Control+z");
+  assert.equal(await page.locator(".canvas-element").count(), 22);
+  await page.locator(".canvas-element").last().click();
+  const sizeBefore = await selected.boundingBox();
+  const handle = await selected.locator(".selection-handle.se").boundingBox();
+  await page.mouse.move(
+    handle.x + handle.width / 2,
+    handle.y + handle.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(handle.x + 35, handle.y + 25, { steps: 5 });
+  await page.mouse.up();
+  assert.ok((await selected.boundingBox()).width > sizeBefore.width);
+  await page.keyboard.press("Control+z");
+  await page.locator(".canvas-element").last().click();
+  assert.equal((await selected.boundingBox()).width, sizeBefore.width);
   await page.getByRole("button", { name: "儲存專案", exact: true }).click();
   await page
     .getByRole("status")
@@ -144,7 +171,7 @@ try {
   });
   assert.equal(invalid.status(), 400);
   console.log(
-    "PASS: simulation, variable updates, reset, drag, undo/redo, SQLite save/reopen, conflict protection, JSON export/import, multi-screen navigation, malformed input and browser errors.",
+    "PASS: simulation, variable updates, reset, drag, multi-selection copy/paste, resize, undo/redo, SQLite save/reopen, conflict protection, JSON export/import, multi-screen navigation, malformed input and browser errors.",
   );
 } finally {
   await browser?.close();

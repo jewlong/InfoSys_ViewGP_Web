@@ -107,3 +107,21 @@ npm run test:dev
 ## 目前範圍
 
 這是單人模擬版本。PLC／設備通訊、背景採集、警報、多國語言、趨勢圖、登入權限、多人協作、版本還原介面及 IndexedDB 草稿尚未實作。預設僅監聽本機，正式對外部署前需要身分驗證、HTTPS 與存取控制。
+
+## 前端程式結構
+
+`src/App.tsx` 只負責組合介面與提供編輯器 context，各項功能依職責拆分：
+
+| 目錄                                  | 職責                                                                               |
+| ------------------------------------- | ---------------------------------------------------------------------------------- |
+| `components/widgets`                  | 10 種元件各自的 React 呈現與執行互動，透過 `WidgetRenderer` 統一呼叫。             |
+| `registry/widgetRegistry.ts`          | 元件名稱、圖示、React 元件及建立函式的登錄表。                                     |
+| `components/editor`                   | 工具列、選單、畫面編輯區、左側清單、屬性面板與檔案輸入。                           |
+| `components/dialogs`、`components/ui` | 專案對話框及共用欄位、按鈕。                                                       |
+| `hooks`                               | 選取／拖曳／縮放、復原／重做、模擬、快捷鍵、通知與專案保存；`useEditor` 協調流程。 |
+| `context`                             | 將編輯器狀態與操作提供給各面板。                                                   |
+| `services`                            | HTTP API、JSON 下載及專案檢查。                                                    |
+| `types`、`utils`                      | 共用介面型別及專案複製、初始變數值。                                               |
+| `model.ts`                            | 專案資料模型、預設元件及 JSON 格式驗證。                                           |
+
+新增元件時，先在 `components/widgets` 建立獨立檔案，再加入元件登錄表。若新增元件種類或設定欄位，也需同步調整 `model.ts` 的型別、預設值與驗證、屬性面板及 C# `ProjectValidator.cs`；不需要將呈現程式加入 `App.tsx`。此拆分保留既有 JSON、SQLite 及操作行為。

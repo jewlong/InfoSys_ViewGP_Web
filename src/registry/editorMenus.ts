@@ -1,0 +1,205 @@
+import type { EditorCore } from "../hooks/useEditor";
+import { labels, newProject, uid, type Kind } from "../model";
+import type { MenuItems } from "../types/editor";
+import { initialValues } from "../utils/project";
+export const editingMenus = ["編輯", "畫面", "元件", "排列", "變數"];
+export function createEditorMenus(editor: EditorCore): MenuItems {
+  const {
+    project,
+    screen,
+    selected,
+    setSelected,
+    current,
+    history,
+    future,
+    setMode,
+    running,
+    setValues,
+    setZoom,
+    grid,
+    setGrid,
+    snap,
+    setSnap,
+    left,
+    setLeft,
+    right,
+    setRight,
+    setLeftTab,
+    setDialog,
+    bottom,
+    setBottom,
+    clipboard,
+    importRef,
+    notify,
+    change,
+    patch,
+    undo,
+    redo,
+    guard,
+    resetProject,
+    save,
+    openProjects,
+    exportProject,
+    addElement,
+    remove,
+    copy,
+    paste,
+    newScreen,
+    deleteScreen,
+    check,
+    start,
+    align,
+    order,
+    extremeOrder,
+    fit,
+    addVariable,
+  } = editor;
+  const menuItems: MenuItems = {
+    檔案: [
+      {
+        label: "新增專案",
+        fn: () => {
+          if (guard()) resetProject(newProject());
+        },
+        shortcut: "",
+        disabled: running,
+      },
+      { label: "開啟專案…", fn: () => void openProjects(), disabled: running },
+      { label: "儲存", fn: () => void save(), shortcut: "Ctrl S" },
+      { label: "另存新專案", fn: () => void save(true) },
+      {
+        label: "匯入專案…",
+        fn: () => importRef.current?.click(),
+        disabled: running,
+      },
+      { label: "匯出專案", fn: exportProject },
+      { label: "專案設定", fn: () => setDialog("project"), disabled: running },
+    ],
+    編輯: [
+      {
+        label: "復原",
+        fn: undo,
+        shortcut: "Ctrl Z",
+        disabled: !history.length,
+      },
+      {
+        label: "重做",
+        fn: redo,
+        shortcut: "Ctrl Shift Z",
+        disabled: !future.length,
+      },
+      {
+        label: "剪下",
+        fn: () => copy(true),
+        shortcut: "Ctrl X",
+        disabled: !selected.length,
+      },
+      {
+        label: "複製",
+        fn: () => copy(),
+        shortcut: "Ctrl C",
+        disabled: !selected.length,
+      },
+      {
+        label: "貼上",
+        fn: paste,
+        shortcut: "Ctrl V",
+        disabled: !clipboard.length,
+      },
+      {
+        label: "刪除",
+        fn: remove,
+        shortcut: "Delete",
+        disabled: !selected.length,
+      },
+      {
+        label: "全選",
+        fn: () => setSelected(screen.elements.map((e) => e.id)),
+        shortcut: "Ctrl A",
+      },
+    ],
+    檢視: [
+      { label: "放大", fn: () => setZoom((z) => Math.min(2, z + 0.1)) },
+      { label: "縮小", fn: () => setZoom((z) => Math.max(0.1, z - 0.1)) },
+      { label: "符合畫面", fn: fit },
+      { label: (grid ? "✓ " : "") + "顯示格線", fn: () => setGrid(!grid) },
+      { label: (snap ? "✓ " : "") + "吸附格線", fn: () => setSnap(!snap) },
+      { label: (left ? "✓ " : "") + "左側面板", fn: () => setLeft(!left) },
+      { label: (right ? "✓ " : "") + "屬性面板", fn: () => setRight(!right) },
+      {
+        label: (bottom ? "✓ " : "") + "執行紀錄",
+        fn: () => setBottom(!bottom),
+      },
+    ],
+    畫面: [
+      { label: "新增畫面", fn: () => newScreen() },
+      { label: "複製畫面", fn: () => newScreen(true) },
+      { label: "重新命名 / 畫面設定", fn: () => setDialog("screen") },
+      { label: "刪除畫面", fn: deleteScreen },
+      {
+        label: "設定為起始畫面",
+        fn: () => change((p) => (p.startScreenId = screen.id)),
+      },
+    ],
+    元件: Object.entries(labels).map(([k, label]) => ({
+      label,
+      fn: () => addElement(k as Kind),
+    })),
+    排列: [
+      { label: "靠左對齊", fn: () => align("left") },
+      { label: "靠右對齊", fn: () => align("right") },
+      { label: "靠上對齊", fn: () => align("top") },
+      { label: "靠下對齊", fn: () => align("bottom") },
+      { label: "水平置中", fn: () => align("center") },
+      { label: "垂直置中", fn: () => align("middle") },
+      { label: "水平等距", fn: () => align("horizontal") },
+      { label: "垂直等距", fn: () => align("vertical") },
+      { label: "相同寬度", fn: () => align("width") },
+      { label: "相同高度", fn: () => align("height") },
+      { label: "上一層", fn: () => order(true) },
+      { label: "下一層", fn: () => order(false) },
+      { label: "移至最上層", fn: () => extremeOrder(true) },
+      { label: "移至最下層", fn: () => extremeOrder(false) },
+      {
+        label: "群組",
+        fn: () => {
+          if (selected.length > 1) patch({ groupId: uid() });
+          else notify("請選取至少兩個元件", true);
+        },
+      },
+      { label: "取消群組", fn: () => patch({ groupId: undefined }) },
+      { label: "鎖定", fn: () => patch({ locked: true }) },
+      { label: "解鎖", fn: () => patch({ locked: false }) },
+    ],
+    變數: [
+      { label: "新增變數", fn: addVariable },
+      {
+        label: "管理 / 搜尋變數",
+        fn: () => {
+          setLeft(true);
+          setLeftTab("variables");
+        },
+      },
+      { label: "檢查引用", fn: () => setDialog("check") },
+    ],
+    執行: [
+      { label: "專案檢查", fn: () => setDialog("check") },
+      { label: "預覽目前畫面", fn: () => start("preview") },
+      { label: "執行完整專案", fn: () => start("run") },
+      { label: "停止執行", fn: () => setMode("edit"), disabled: !running },
+      {
+        label: "重設模擬資料",
+        fn: () => {
+          setValues(initialValues(project));
+          notify("模擬資料已重設");
+        },
+        disabled: !running,
+      },
+    ],
+    說明: [
+      { label: "操作說明 / 快捷鍵", fn: () => setDialog("help") },
+      { label: "版本資訊", fn: () => setDialog("help") },
+    ],
+  };
+  return menuItems;
+}
