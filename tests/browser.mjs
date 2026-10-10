@@ -1,40 +1,17 @@
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { startBackend } from "../scripts/backend-test-server.mjs";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const temp = mkdtempSync(join(tmpdir(), "viewx-browser-"));
 const port = Number(process.env.VIEWX_TEST_PORT) || 3197,
   base = `http://127.0.0.1:${port}`;
-const server = spawn(process.execPath, ["server/index.mjs"], {
-  env: {
-    ...process.env,
-    PORT: String(port),
-    NODE_ENV: "production",
-    VIEWX_DB_PATH: join(temp, "test.db"),
-  },
-  stdio: ["ignore", "pipe", "pipe"],
-});
+let server;
 let browser;
 const errors = [];
 try {
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error("Server startup timeout")),
-      15000,
-    );
-    server.stdout.on("data", (data) => {
-      if (data.toString().includes("ViewX Studio running")) {
-        clearTimeout(timer);
-        resolve();
-      }
-    });
-    server.once("exit", (code) => {
-      clearTimeout(timer);
-      reject(new Error(`Server exited ${code}`));
-    });
-  });
+  server = await startBackend(join(temp, "test.db"), port);
   browser = await chromium.launch({
     headless: true,
     ...(process.env.VIEWX_BROWSER_PATH
@@ -150,12 +127,12 @@ try {
     .waitFor();
   await page.keyboard.press("Escape");
   await page.screenshot({
-    path: "/tmp/viewx-studio-desktop.png",
+    path: join(temp, "desktop.png"),
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
-    path: "/tmp/viewx-studio-mobile.png",
+    path: join(temp, "mobile.png"),
     fullPage: true,
   });
   assert.deepEqual(errors, []);
@@ -171,7 +148,6 @@ try {
   );
 } finally {
   await browser?.close();
-  server.kill("SIGTERM");
-  await new Promise((resolve) => server.once("exit", resolve));
+  await server?.close();
   rmSync(temp, { recursive: true, force: true });
 }
