@@ -33,13 +33,24 @@ export function useEditorCore() {
   const screen =
     project.screens.find((s) => s.id === screenId) ?? project.screens[0];
   const { notice, setNotice, logs, setLogs, notify } = useNotifications();
-  const { mode, setMode, running, values, setValues, action, input } =
-    useSimulation({
-      project,
-      setScreenId,
-      notify,
-      setLogs,
-    });
+  const {
+    mode,
+    setMode,
+    running,
+    values,
+    setValues,
+    action,
+    input,
+    resetSimulation,
+    trendData,
+    alarmEvents,
+    acknowledgeAlarm,
+  } = useSimulation({
+    project,
+    setScreenId,
+    notify,
+    setLogs,
+  });
   const [zoom, setZoom] = useState(0.75),
     [grid, setGrid] = useState(true),
     [snap, setSnap] = useState(true);
@@ -149,12 +160,44 @@ export function useEditorCore() {
       y ??
         Math.min(120 + (screen.elements.length % 5) * 20, screen.height - 80),
     );
-    if (["number", "input", "indicator", "switch", "button"].includes(kind))
+    if (
+      [
+        "number",
+        "input",
+        "indicator",
+        "switch",
+        "button",
+        "gauge",
+        "bar",
+        "trend",
+      ].includes(kind)
+    )
       e.variableId = project.variables.find((v) =>
         ["indicator", "switch", "button"].includes(kind)
           ? v.type === "boolean"
           : v.type === "number",
       )?.id;
+    e.width = Math.min(e.width, screen.width);
+    e.height = Math.min(e.height, screen.height);
+    e.x = Math.max(0, Math.min(e.x, screen.width - e.width));
+    e.y = Math.max(0, Math.min(e.y, screen.height - e.height));
+    if (kind === "alarm") {
+      const variable =
+        project.variables.find((v) => v.type === "boolean") ??
+        project.variables.find((v) => v.type === "number");
+      if (variable)
+        e.alarmRules = [
+          {
+            id: uid(),
+            message: `${variable.name}警報`,
+            variableId: variable.id,
+            operator: variable.type === "boolean" ? "true" : "gte",
+            ...(variable.type === "number" ? { threshold: 100 } : {}),
+            severity: "warning",
+            enabled: true,
+          },
+        ];
+    }
     editScreen((s) => s.elements.push(e));
     setSelected([e.id]);
   }
@@ -240,7 +283,7 @@ export function useEditorCore() {
       notify("請先修正專案檢查項目", true);
       return;
     }
-    setValues(initialValues(project));
+    resetSimulation();
     if (next === "run") setScreenId(project.startScreenId);
     setSelected([]);
     setMode(next);
@@ -354,7 +397,10 @@ export function useEditorCore() {
     const used = project.screens.some((s) =>
       s.elements.some(
         (e) =>
-          e.variableId === id || e.conditionId === id || e.enabledId === id,
+          e.variableId === id ||
+          e.conditionId === id ||
+          e.enabledId === id ||
+          e.alarmRules?.some((rule) => rule.variableId === id),
       ),
     );
     if (used) {
@@ -447,6 +493,10 @@ export function useEditorCore() {
     start,
     action,
     input,
+    resetSimulation,
+    trendData,
+    alarmEvents,
+    acknowledgeAlarm,
     align,
     order,
     extremeOrder,

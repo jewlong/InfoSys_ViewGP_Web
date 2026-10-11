@@ -1,7 +1,8 @@
 import type { Element, Project, Variable } from "../model";
 
 export function bindingTypes(e: Element): Variable["type"][] {
-  if (["number", "input"].includes(e.kind)) return ["number"];
+  if (["number", "input", "gauge", "bar", "trend"].includes(e.kind))
+    return ["number"];
   if (["indicator", "switch"].includes(e.kind)) return ["boolean"];
   if (e.kind === "text") return ["number", "boolean", "string"];
   if (e.kind === "button") {
@@ -49,7 +50,15 @@ export function bindingProblems(e: Element, project: Project): string[] {
   const variable = project.variables.find((v) => v.id === e.variableId);
   const types = bindingTypes(e);
   const required =
-    ["number", "input", "indicator", "switch"].includes(e.kind) ||
+    [
+      "number",
+      "input",
+      "indicator",
+      "switch",
+      "gauge",
+      "bar",
+      "trend",
+    ].includes(e.kind) ||
     (e.kind === "button" && e.action !== "screen");
   if (
     (required || e.variableId) &&

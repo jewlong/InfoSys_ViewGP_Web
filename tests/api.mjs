@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startBackend } from "../scripts/backend-test-server.mjs";
-import { demoProject, validateProject } from "../src/model.ts";
+import { demoProject, makeElement, validateProject } from "../src/model.ts";
 const directory = mkdtempSync(join(tmpdir(), "viewx-api-"));
 const databasePath = join(directory, "legacy.db");
 const port = Number(process.env.VIEWX_TEST_PORT) || 3198;
@@ -113,6 +113,29 @@ try {
     ["image", "https://example.com/pixel"],
     ["locked", "yes"],
     ["action", "invalid"],
+    ["scaleMin", null],
+    ["scaleMax", "100"],
+    ["fillColor", "red"],
+    ["trackColor", false],
+    ["showValue", 1],
+    ["orientation", "diagonal"],
+    ["sampleInterval", 99],
+    ["historyPoints", 601],
+    ["alarmMaxRows", 0],
+    ["alarmRules", null],
+    ["alarmRules", [null]],
+    [
+      "alarmRules",
+      [
+        {
+          id: "r",
+          message: "警報",
+          variableId: "running",
+          operator: "invalid",
+          severity: "warning",
+        },
+      ],
+    ],
     ["numberFormat", "bad"],
     ["numberLocale", "bad"],
     ["useGrouping", null],
@@ -185,6 +208,25 @@ try {
     buttonDisabledColor: "#aaaaaa",
   });
   decimals.screens[0].elements[0].image = "data:image/png;base64,aGVsbG8=";
+  decimals.screens[0].elements.push(
+    ...["gauge", "bar", "trend", "alarm"].map((kind) => ({
+      ...makeElement(kind),
+      ...(kind === "alarm"
+        ? {
+            alarmRules: [
+              {
+                id: "r",
+                message: "運轉警報",
+                variableId: "running",
+                operator: "true",
+                severity: "warning",
+                enabled: true,
+              },
+            ],
+          }
+        : { variableId: "temperature" }),
+    })),
+  );
   assert.equal(validateProject(decimals), true);
   assert.equal(
     (await put(project.id, { project: decimals, revision: 4 })).status,

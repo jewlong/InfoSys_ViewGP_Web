@@ -1,5 +1,13 @@
+import { GaugeWidget } from "../components/widgets/GaugeWidget";
+import { BarWidget } from "../components/widgets/BarWidget";
+import { TrendWidget } from "../components/widgets/TrendWidget";
+import { AlarmWidget } from "../components/widgets/AlarmWidget";
 import {
   Activity,
+  Gauge,
+  BarChart3,
+  ChartLine,
+  Bell,
   Circle,
   Hash,
   Image,
@@ -53,4 +61,8 @@ export const widgetRegistry: Record<Kind, WidgetDefinition> = {
   number: define("number", Hash, NumberWidget),
   input: define("input", TextCursorInput, NumberInputWidget),
   switch: define("switch", ToggleLeft, SwitchWidget),
+  gauge: define("gauge", Gauge, GaugeWidget),
+  bar: define("bar", BarChart3, BarWidget),
+  trend: define("trend", ChartLine, TrendWidget),
+  alarm: define("alarm", Bell, AlarmWidget),
 };

@@ -1,7 +1,6 @@
 import type { EditorCore } from "../hooks/useEditor";
 import { labels, newProject, uid, type Kind } from "../model";
 import type { MenuItems } from "../types/editor";
-import { initialValues } from "../utils/project";
 export const editingMenus = ["編輯", "畫面", "元件", "排列", "變數"];
 export function createEditorMenus(editor: EditorCore): MenuItems {
   const {
@@ -14,7 +13,7 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
     future,
     setMode,
     running,
-    setValues,
+    resetSimulation,
     setZoom,
     grid,
     setGrid,
@@ -190,7 +189,7 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
       {
         label: "重設模擬資料",
         fn: () => {
-          setValues(initialValues(project));
+          resetSimulation();
           notify("模擬資料已重設");
         },
         disabled: !running,

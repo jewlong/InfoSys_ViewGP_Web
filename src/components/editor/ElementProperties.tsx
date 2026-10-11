@@ -1,3 +1,4 @@
+import { ElementAdvancedFields } from "./ElementAdvancedFields";
 import { ElementDataFields } from "./ElementDataFields";
 import { ElementAppearanceFields } from "./ElementAppearanceFields";
 import { Image as ImageIcon, Trash2 } from "lucide-react";
@@ -104,6 +105,7 @@ export function ElementProperties() {
       </PropertySection>
       <ElementAppearanceFields />
       <ElementDataFields />
+      <ElementAdvancedFields />
       <PropertySection title="狀態與條件">
         <Field label="顯示條件（布林）">
           <select

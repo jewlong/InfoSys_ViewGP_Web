@@ -11,7 +11,6 @@ import {
 import { useEditorContext } from "../../context/EditorContext";
 import { labels } from "../../model";
 import { widgetRegistry } from "../../registry/widgetRegistry";
-import { initialValues } from "../../utils/project";
 import {
   ColorField,
   Field,
@@ -29,6 +28,7 @@ export function PropertyPanel() {
     running,
     values,
     setValues,
+    resetSimulation,
     notify,
     change,
     editScreen,
@@ -86,7 +86,7 @@ export function PropertyPanel() {
           <button
             className="secondary-btn full"
             onClick={() => {
-              setValues(initialValues(project));
+              resetSimulation();
               notify("模擬資料已重設");
             }}
           >

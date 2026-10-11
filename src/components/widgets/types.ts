@@ -1,3 +1,4 @@
+import type { AlarmEvent, TrendPoint } from "../../types/runtime";
 import type { CSSProperties } from "react";
 import type { Element } from "../../model";
 export type WidgetProps = {
@@ -5,6 +6,9 @@ export type WidgetProps = {
   values: Record<string, unknown>;
   running: boolean;
   disabled?: boolean;
+  samples?: TrendPoint[];
+  alarmEvents?: AlarmEvent[];
+  onAcknowledge?: (id: string) => void;
   onAction: () => void;
   onInput: (value: string) => string | undefined;
 };

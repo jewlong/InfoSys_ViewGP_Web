@@ -6,7 +6,7 @@ namespace ViewX.Server;
 // contract tests exercise both validators using the same project fixtures.
 public static class ProjectValidator
 {
-    private static readonly HashSet<string> Kinds = ["text", "rectangle", "circle", "line", "image", "button", "indicator", "number", "input", "switch"];
+    private static readonly HashSet<string> Kinds = ["text", "rectangle", "circle", "line", "image", "button", "indicator", "number", "input", "switch", "gauge", "bar", "trend", "alarm"];
     private static readonly HashSet<string> Actions = ["toggle", "set", "increment", "screen", "reset"];
     private static readonly string[] RequiredElementStrings = ["name", "text", "color", "background", "actionValue"];
     private static readonly string[] OptionalElementStrings = ["variableId", "targetScreenId", "groupId", "conditionId", "enabledId", "image", "unit"];
@@ -47,7 +47,7 @@ public static class ProjectValidator
             if (screen.GetProperty("id").GetString() == project.GetProperty("startScreenId").GetString()) startFound = true;
             foreach (var element in elements.EnumerateArray())
             {
-                if (!AppearanceValidator.IsValid(element) || !DataSettingsValidator.IsValid(element) || !Unique(element, ids) || !Text(element, "kind") || !Kinds.Contains(element.GetProperty("kind").GetString()!) ||
+                if (!AppearanceValidator.IsValid(element) || !DataSettingsValidator.IsValid(element) || !AdvancedSettingsValidator.IsValid(element) || !Unique(element, ids) || !Text(element, "kind") || !Kinds.Contains(element.GetProperty("kind").GetString()!) ||
                     !RequiredElementStrings.All(name => Text(element, name)) || !Number(element, "x", 0, double.MaxValue) || !Number(element, "y", 0, double.MaxValue) ||
                     !Number(element, "width", double.Epsilon, 4096) || !Number(element, "height", double.Epsilon, 4096) || !Number(element, "fontSize", 8, 1000) ||
                     !Boolean(element, "locked") || !Boolean(element, "visible") || !Text(element, "action") || !Actions.Contains(element.GetProperty("action").GetString()!)) return false;

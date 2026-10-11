@@ -1,3 +1,4 @@
+import { useRuntimeData } from "./useRuntimeData";
 import { evaluateAction, inputError, parseNumber } from "../services/dataRules";
 import { useState, type Dispatch, type SetStateAction } from "react";
 import type { Element, Project } from "../model";
@@ -19,6 +20,12 @@ export function useSimulation({
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     initialValues(project),
   );
+  const [epoch, setEpoch] = useState(0);
+  const runtimeData = useRuntimeData(project, values, running, epoch);
+  function resetSimulation() {
+    setValues(initialValues(project));
+    setEpoch((value) => value + 1);
+  }
   function action(e: Element) {
     if (!running) return;
     if (e.enabledId && !values[e.enabledId]) return;
@@ -41,5 +48,15 @@ export function useSimulation({
     setLogs((old) => [`${e.name} · 輸入：${raw}`, ...old].slice(0, 50));
     return undefined;
   }
-  return { mode, setMode, running, values, setValues, action, input };
+  return {
+    mode,
+    setMode,
+    running,
+    values,
+    setValues,
+    action,
+    input,
+    resetSimulation,
+    ...runtimeData,
+  };
 }

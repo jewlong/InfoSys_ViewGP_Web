@@ -1,10 +1,14 @@
+import { advancedProblems } from "./advancedRules.ts";
 import { bindingProblems } from "./dataRules.ts";
 import type { Project } from "../model";
 export function checkProject(project: Project) {
   const problems: string[] = [];
   project.screens.forEach((s) =>
     s.elements.forEach((e) => {
-      for (const problem of bindingProblems(e, project))
+      for (const problem of [
+        ...bindingProblems(e, project),
+        ...advancedProblems(e, project),
+      ])
         problems.push(`${s.name} / ${e.name}：${problem}`);
       if (e.kind === "image" && !e.image)
         problems.push(`${s.name} / ${e.name}：尚未設定圖片`);

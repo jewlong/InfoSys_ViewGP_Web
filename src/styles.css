@@ -1544,3 +1544,138 @@ kbd {
   font-size: 12px;
   line-height: 1.6;
 }
+
+.advanced-widget {
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.gauge-widget svg,
+.trend-widget svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.bar-widget {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  position: relative;
+}
+.advanced-title {
+  font-size: 0.85em;
+}
+.bar-track {
+  position: relative;
+  flex: 1;
+  min-height: 10px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bar-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+.bar-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+.bar-value {
+  text-align: center;
+  font-size: 0.9em;
+}
+.bar-widget.vertical .bar-track {
+  margin-left: 28px;
+}
+.bar-widget.vertical .bar-scale {
+  position: absolute;
+  top: 34px;
+  bottom: 30px;
+  left: 10px;
+  flex-direction: column-reverse;
+}
+.alarm-widget {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+.alarm-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  gap: 8px;
+}
+.alarm-heading label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+}
+.alarm-scroll {
+  flex: 1;
+  overflow: auto;
+}
+.alarm-widget table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.alarm-widget th,
+.alarm-widget td {
+  padding: 6px;
+  text-align: left;
+  border-bottom: 1px solid #ffffff19;
+}
+.alarm-widget th {
+  position: sticky;
+  top: 0;
+  background: #23334c;
+}
+.alarm-widget td small {
+  display: block;
+  font-size: 9px;
+  opacity: 0.7;
+}
+.alarm-widget tr[data-severity="critical"] {
+  color: #fca5a5;
+}
+.alarm-widget tr[data-severity="warning"] {
+  color: #fcd34d;
+}
+.alarm-widget tr[data-severity="info"] {
+  color: #7dd3fc;
+}
+.alarm-widget td button {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #ffffff18;
+}
+.alarm-widget .alarm-empty {
+  text-align: center;
+  padding: 18px 6px;
+}
+.alarm-summary {
+  padding: 6px 8px;
+  font-size: 10px;
+  opacity: 0.75;
+}
+.alarm-rule-fields {
+  border: 1px solid #e4e9f1;
+  border-radius: 6px;
+  padding: 10px;
+  margin: 12px 0;
+  min-width: 0;
+}
+.alarm-rule-fields legend {
+  color: #63728a;
+  font-size: 12px;
+}
+.alarm-rule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

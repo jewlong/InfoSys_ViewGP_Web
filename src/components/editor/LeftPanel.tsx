@@ -103,7 +103,7 @@ export function LeftPanel() {
           </div>
           <div className="library">
             <div className="library-label">
-              BASIC COMPONENTS <span>基本元件</span>
+              COMPONENTS <span>元件庫</span>
             </div>
             <div className="component-grid">
               {(Object.keys(widgetRegistry) as Kind[])

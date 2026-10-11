@@ -41,6 +41,9 @@ export function CanvasEditor() {
     newScreen,
     action,
     input,
+    trendData,
+    alarmEvents,
+    acknowledgeAlarm,
     down,
     move,
     endDrag,
@@ -211,6 +214,11 @@ export function CanvasEditor() {
                       )}
                       onAction={() => action(e)}
                       onInput={(val) => input(e, val)}
+                      samples={trendData[e.id]}
+                      alarmEvents={alarmEvents.filter(
+                        (event) => event.elementId === e.id,
+                      )}
+                      onAcknowledge={acknowledgeAlarm}
                     />
                     {!running && selected.includes(e.id) && (
                       <>

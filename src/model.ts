@@ -8,13 +8,26 @@ export type Kind =
   | "indicator"
   | "number"
   | "input"
-  | "switch";
+  | "switch"
+  | "gauge"
+  | "bar"
+  | "trend"
+  | "alarm";
 export type Variable = {
   id: string;
   name: string;
   type: "number" | "boolean" | "string";
   category?: string;
   initial: number | boolean | string;
+};
+export type AlarmRule = {
+  id: string;
+  message: string;
+  variableId: string;
+  operator: "gt" | "gte" | "lt" | "lte" | "eq" | "ne" | "true" | "false";
+  threshold?: number;
+  severity: "info" | "warning" | "critical";
+  enabled?: boolean;
 };
 export type Element = {
   id: string;
@@ -45,6 +58,19 @@ export type Element = {
   inputMin?: number;
   inputMax?: number;
   inputStep?: number;
+  scaleMin?: number;
+  scaleMax?: number;
+  warningThreshold?: number;
+  criticalThreshold?: number;
+  fillColor?: string;
+  trackColor?: string;
+  orientation?: "horizontal" | "vertical";
+  showValue?: boolean;
+  showScale?: boolean;
+  sampleInterval?: number;
+  historyPoints?: number;
+  alarmRules?: AlarmRule[];
+  alarmMaxRows?: number;
   conditionId?: string;
   enabledId?: string;
   fontFamily?: string;
@@ -99,6 +125,10 @@ export const labels: Record<Kind, string> = {
   number: "數值顯示",
   input: "數值輸入",
   switch: "開關",
+  gauge: "儀表",
+  bar: "長條顯示",
+  trend: "趨勢圖",
+  alarm: "警報清單",
 };
 export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
   id: uid(),
@@ -107,21 +137,37 @@ export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
   x,
   y,
   width:
-    kind === "line"
-      ? 160
-      : kind === "indicator"
-        ? 44
-        : kind === "circle"
-          ? 80
-          : 160,
+    kind === "alarm"
+      ? 480
+      : kind === "trend"
+        ? 400
+        : kind === "gauge"
+          ? 220
+          : kind === "bar"
+            ? 240
+            : kind === "line"
+              ? 160
+              : kind === "indicator"
+                ? 44
+                : kind === "circle"
+                  ? 80
+                  : 160,
   height:
-    kind === "line"
-      ? 4
-      : kind === "indicator"
-        ? 44
-        : kind === "circle"
-          ? 80
-          : 48,
+    kind === "alarm"
+      ? 220
+      : kind === "trend"
+        ? 200
+        : kind === "gauge"
+          ? 180
+          : kind === "bar"
+            ? 100
+            : kind === "line"
+              ? 4
+              : kind === "indicator"
+                ? 44
+                : kind === "circle"
+                  ? 80
+                  : 48,
   text:
     kind === "button" ? "啟動" : kind === "text" ? "文字內容" : labels[kind],
   color: "#e2e8f0",
@@ -136,6 +182,17 @@ export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
   actionValue: "1",
   locked: false,
   visible: true,
+  ...(["gauge", "bar", "trend"].includes(kind)
+    ? {
+        scaleMin: 0,
+        scaleMax: 100,
+        fillColor: "#38bdf8",
+        trackColor: "#334155",
+      }
+    : {}),
+  ...(kind === "bar" ? { orientation: "horizontal" as const } : {}),
+  ...(kind === "trend" ? { sampleInterval: 1000, historyPoints: 120 } : {}),
+  ...(kind === "alarm" ? { alarmRules: [], alarmMaxRows: 20 } : {}),
 });
 export function newProject(): Project {
   const id = uid();
@@ -336,6 +393,7 @@ export function validateProject(value: unknown): value is Project {
             unique(e.id) &&
             validateAppearance(e) &&
             validateDataSettings(e) &&
+            validateAdvancedSettings(e) &&
             Object.hasOwn(labels, e.kind) &&
             ["name", "text", "color", "background", "actionValue"].every(
               (k) => typeof e[k as keyof Element] === "string",
@@ -457,4 +515,61 @@ export function validateDataSettings(e: Element): boolean {
   for (const key of ["inputMin", "inputMax", "inputStep"] as const)
     if (e[key] !== undefined && !Number.isFinite(e[key])) return false;
   return e.inputStep === undefined || e.inputStep > 0;
+}
+
+export function validateAdvancedSettings(e: Element): boolean {
+  for (const key of [
+    "scaleMin",
+    "scaleMax",
+    "warningThreshold",
+    "criticalThreshold",
+  ] as const)
+    if (e[key] !== undefined && !Number.isFinite(e[key])) return false;
+  for (const key of ["fillColor", "trackColor"] as const)
+    if (
+      e[key] !== undefined &&
+      (typeof e[key] !== "string" || !/^#[\da-f]{6}$/i.test(e[key]))
+    )
+      return false;
+  for (const key of ["showValue", "showScale"] as const)
+    if (e[key] !== undefined && typeof e[key] !== "boolean") return false;
+  if (
+    e.orientation !== undefined &&
+    !["horizontal", "vertical"].includes(e.orientation)
+  )
+    return false;
+  for (const [key, min, max] of [
+    ["sampleInterval", 100, 60000],
+    ["historyPoints", 10, 600],
+    ["alarmMaxRows", 1, 100],
+  ] as const)
+    if (
+      e[key] !== undefined &&
+      (!Number.isInteger(e[key]) || e[key]! < min || e[key]! > max)
+    )
+      return false;
+  if (e.alarmRules === undefined) return true;
+  if (!Array.isArray(e.alarmRules) || e.alarmRules.length > 20) return false;
+  const ids = new Set<string>();
+  return e.alarmRules.every((rule) => {
+    if (
+      !rule ||
+      typeof rule !== "object" ||
+      typeof rule.id !== "string" ||
+      !rule.id ||
+      ids.has(rule.id)
+    )
+      return false;
+    ids.add(rule.id);
+    return (
+      typeof rule.message === "string" &&
+      typeof rule.variableId === "string" &&
+      ["gt", "gte", "lt", "lte", "eq", "ne", "true", "false"].includes(
+        rule.operator,
+      ) &&
+      ["info", "warning", "critical"].includes(rule.severity) &&
+      (rule.threshold === undefined || Number.isFinite(rule.threshold)) &&
+      (rule.enabled === undefined || typeof rule.enabled === "boolean")
+    );
+  });
 }

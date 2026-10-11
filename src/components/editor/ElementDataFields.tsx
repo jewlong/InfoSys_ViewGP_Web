@@ -141,7 +141,7 @@ export function ElementDataFields() {
           </button>
         </PropertySection>
       )}
-      {e.kind === "number" && (
+      {["number", "gauge", "bar", "trend"].includes(e.kind) && (
         <PropertySection title="數值格式">
           <Field label="顯示格式">
             <select
