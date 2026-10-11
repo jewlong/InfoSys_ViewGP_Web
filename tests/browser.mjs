@@ -189,6 +189,78 @@ try {
     .getByText("產線即時監控", { exact: true })
     .waitFor();
   await page.keyboard.press("Escape");
+  // Box selection uses canvas coordinates at different zoom levels.
+  await page.getByRole("button", { name: "新增畫面", exact: true }).click();
+  for (let i = 0; i < 2; i++) {
+    await page
+      .locator(".component-grid")
+      .getByRole("button", { name: "文字", exact: true })
+      .click();
+  }
+  await page
+    .locator(".right-panel")
+    .getByLabel("X 座標", { exact: true })
+    .fill("400");
+  async function boxSelect(
+    reverse = false,
+    onlySecond = false,
+    additive = false,
+  ) {
+    const first = await page.locator(".canvas-element").first().boundingBox();
+    const last = await page.locator(".canvas-element").last().boundingBox();
+    const start = {
+      x: (onlySecond ? last.x : first.x) - 12,
+      y: Math.min(first.y, last.y) - 12,
+    };
+    const finish = {
+      x: last.x + last.width + 12,
+      y: Math.max(first.y + first.height, last.y + last.height) + 12,
+    };
+    if (additive) await page.keyboard.down("Shift");
+    await page.mouse.move(
+      reverse ? finish.x : start.x,
+      reverse ? finish.y : start.y,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      reverse ? start.x : finish.x,
+      reverse ? start.y : finish.y,
+      { steps: 5 },
+    );
+    assert.equal(await page.locator(".selection-marquee").count(), 1);
+    await page.mouse.up();
+    if (additive) await page.keyboard.up("Shift");
+    assert.equal(await page.locator(".selection-marquee").count(), 0);
+  }
+  await boxSelect();
+  assert.equal(await selected.count(), 2);
+  await boxSelect(true, true);
+  assert.equal(await selected.count(), 1);
+  await page.locator(".canvas-element").first().click();
+  await boxSelect(false, true, true);
+  assert.equal(await selected.count(), 2);
+  await page.getByRole("button", { name: "縮小", exact: true }).click();
+  await boxSelect(true);
+  assert.equal(await selected.count(), 2);
+  await page.keyboard.press("Control+c");
+  await page.keyboard.press("Control+v");
+  assert.equal(await page.locator(".canvas-element").count(), 4);
+  await page.keyboard.press("Control+z");
+  assert.equal(await page.locator(".canvas-element").count(), 2);
+  const canvasBox = await page.locator(".design-canvas").boundingBox();
+  await page.mouse.move(canvasBox.x + 10, canvasBox.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(canvasBox.x + 50, canvasBox.y + 50);
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+  assert.equal(await page.locator(".selection-marquee").count(), 0);
+  await page.getByRole("button", { name: "預覽", exact: true }).click();
+  await page.mouse.move(canvasBox.x + 10, canvasBox.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(canvasBox.x + 50, canvasBox.y + 50);
+  assert.equal(await page.locator(".selection-marquee").count(), 0);
+  await page.mouse.up();
+  await page.keyboard.press("Escape");
   await page.screenshot({
     path: join(temp, "desktop.png"),
     fullPage: true,
@@ -207,7 +279,7 @@ try {
   });
   assert.equal(invalid.status(), 400);
   console.log(
-    "PASS: simulation, variable updates, reset, drag, multi-selection copy/paste, resize, undo/redo, SQLite save/reopen, conflict protection, JSON export/import, multi-screen navigation, malformed input and browser errors.",
+    "PASS: simulation, variable updates, reset, drag, multi-selection copy/paste, resize, marquee selection, undo/redo, SQLite save/reopen, conflict protection, JSON export/import, multi-screen navigation, malformed input and browser errors.",
   );
 } finally {
   await browser?.close();

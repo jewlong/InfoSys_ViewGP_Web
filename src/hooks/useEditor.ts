@@ -56,16 +56,27 @@ export function useEditorCore() {
     imageRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null),
     workspaceRef = useRef<HTMLDivElement>(null);
-  const { selected, setSelected, down, move, endDrag, beginResize } =
-    useSelection({
-      project,
-      screen,
-      running,
-      zoom,
-      snap,
-      setProject,
-      recordSnapshot,
-    });
+  const {
+    selected,
+    setSelected,
+    down,
+    move,
+    endDrag,
+    beginResize,
+    marquee,
+    beginMarquee,
+    moveMarquee,
+    endMarquee,
+    cancelMarquee,
+  } = useSelection({
+    project,
+    screen,
+    running,
+    zoom,
+    snap,
+    setProject,
+    recordSnapshot,
+  });
   const current = screen.elements.find((e) => e.id === selected[0]);
   const {
     revision,
@@ -444,6 +455,11 @@ export function useEditorCore() {
     addVariable,
     deleteVariable,
     beginResize,
+    marquee,
+    beginMarquee,
+    moveMarquee,
+    endMarquee,
+    cancelMarquee,
   };
 }
 export type EditorCore = ReturnType<typeof useEditorCore>;

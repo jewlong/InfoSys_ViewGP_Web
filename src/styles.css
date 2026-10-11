@@ -1481,3 +1481,15 @@ kbd {
 .element-properties-dialog .modal-footer {
   gap: 12px;
 }
+
+.selection-marquee {
+  position: absolute;
+  border: 1px solid #2879ed;
+  background: #2879ed22;
+  pointer-events: none;
+  z-index: 20;
+}
+.design-canvas {
+  touch-action: none;
+  user-select: none;
+}

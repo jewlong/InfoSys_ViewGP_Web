@@ -44,6 +44,11 @@ export function CanvasEditor() {
     move,
     endDrag,
     beginResize,
+    marquee,
+    beginMarquee,
+    moveMarquee,
+    endMarquee,
+    cancelMarquee,
   } = useEditorContext();
   return (
     <main className="editor">
@@ -89,7 +94,7 @@ export function CanvasEditor() {
             </span>
           </div>
           <span className="workspace-hint">
-            {running ? "可操作按鈕與輸入欄位" : "拖曳以移動 · 方向鍵微調"}
+            {running ? "可操作按鈕與輸入欄位" : "空白處拖曳框選 · 元件拖曳移動"}
           </span>
         </div>
         <div className="canvas-scroll">
@@ -111,7 +116,11 @@ export function CanvasEditor() {
                 backgroundColor: screen.background,
                 transform: `scale(${zoom})`,
               }}
-              onPointerDown={() => setSelected([])}
+              onPointerDown={beginMarquee}
+              onPointerMove={moveMarquee}
+              onPointerUp={endMarquee}
+              onPointerCancel={cancelMarquee}
+              onLostPointerCapture={cancelMarquee}
               onDragOver={(e) => {
                 if (!running) e.preventDefault();
               }}
@@ -219,6 +228,13 @@ export function CanvasEditor() {
                     )}
                   </div>
                 ))}
+              {marquee && (
+                <div
+                  className="selection-marquee"
+                  style={marquee}
+                  aria-hidden="true"
+                />
+              )}
             </div>
           </div>
           <div className="canvas-caption">

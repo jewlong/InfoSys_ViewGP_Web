@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useRef,
   useState,
   type Dispatch,
@@ -33,6 +34,113 @@ export function useSelection({
     snapshot: Project;
     changed: boolean;
   } | null>(null);
+  const [marquee, setMarquee] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const marqueeRef = useRef<{
+    x: number;
+    y: number;
+    base: string[];
+    pointerId: number;
+    target: HTMLDivElement;
+  } | null>(null);
+  function cancelMarquee() {
+    const drag = marqueeRef.current;
+    if (!drag) return;
+    marqueeRef.current = null;
+    if (drag.target.hasPointerCapture(drag.pointerId))
+      drag.target.releasePointerCapture(drag.pointerId);
+    setSelected(drag.base);
+    setMarquee(null);
+  }
+  useEffect(() => {
+    cancelMarquee();
+  }, [screen.id, running]);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && marqueeRef.current) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        cancelMarquee();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+  function canvasPoint(ev: ReactPointerEvent<HTMLDivElement>) {
+    const rect = ev.currentTarget.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(screen.width, (ev.clientX - rect.left) / zoom)),
+      y: Math.max(0, Math.min(screen.height, (ev.clientY - rect.top) / zoom)),
+    };
+  }
+  function beginMarquee(ev: ReactPointerEvent<HTMLDivElement>) {
+    if (running || ev.button !== 0 || ev.target !== ev.currentTarget) return;
+    ev.preventDefault();
+    const point = canvasPoint(ev);
+    marqueeRef.current = {
+      ...point,
+      base: ev.shiftKey ? [...selected] : [],
+      pointerId: ev.pointerId,
+      target: ev.currentTarget,
+    };
+    if (!ev.shiftKey) setSelected([]);
+    setMarquee({ ...point, width: 0, height: 0 });
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+  }
+  function moveMarquee(ev: ReactPointerEvent<HTMLDivElement>) {
+    const drag = marqueeRef.current;
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    const point = canvasPoint(ev);
+    const box = {
+      x: Math.min(point.x, drag.x),
+      y: Math.min(point.y, drag.y),
+      width: Math.abs(point.x - drag.x),
+      height: Math.abs(point.y - drag.y),
+    };
+    setMarquee(box);
+    if (box.width < 2 || box.height < 2) {
+      setSelected(drag.base);
+      return;
+    }
+    const enclosed = screen.elements.filter(
+      (e) =>
+        e.visible &&
+        e.x >= box.x &&
+        e.y >= box.y &&
+        e.x + e.width <= box.x + box.width &&
+        e.y + e.height <= box.y + box.height,
+    );
+    // Keep group selection consistent with clicking a grouped component.
+    const groups = new Set(enclosed.map((e) => e.groupId).filter(Boolean));
+    setSelected(
+      Array.from(
+        new Set([
+          ...drag.base,
+          ...screen.elements
+            .filter(
+              (e) =>
+                e.visible &&
+                (enclosed.some((item) => item.id === e.id) ||
+                  (e.groupId && groups.has(e.groupId))),
+            )
+            .map((e) => e.id),
+        ]),
+      ),
+    );
+  }
+  function endMarquee(ev: ReactPointerEvent<HTMLDivElement>) {
+    if (marqueeRef.current?.pointerId !== ev.pointerId) return;
+    moveMarquee(ev);
+    const drag = marqueeRef.current!;
+    marqueeRef.current = null;
+    if (drag.target.hasPointerCapture(drag.pointerId))
+      drag.target.releasePointerCapture(drag.pointerId);
+    setMarquee(null);
+  }
   function down(ev: ReactPointerEvent, e: Element) {
     if (running || ev.button !== 0) return;
     ev.stopPropagation();
@@ -142,5 +250,17 @@ export function useSelection({
     target.addEventListener("pointerup", finish);
     target.addEventListener("pointercancel", finish);
   }
-  return { selected, setSelected, down, move, endDrag, beginResize };
+  return {
+    selected,
+    setSelected,
+    down,
+    move,
+    endDrag,
+    beginResize,
+    marquee,
+    beginMarquee,
+    moveMarquee,
+    endMarquee,
+    cancelMarquee,
+  };
 }
