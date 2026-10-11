@@ -47,7 +47,7 @@ public static class ProjectValidator
             if (screen.GetProperty("id").GetString() == project.GetProperty("startScreenId").GetString()) startFound = true;
             foreach (var element in elements.EnumerateArray())
             {
-                if (!Unique(element, ids) || !Text(element, "kind") || !Kinds.Contains(element.GetProperty("kind").GetString()!) ||
+                if (!AppearanceValidator.IsValid(element) || !Unique(element, ids) || !Text(element, "kind") || !Kinds.Contains(element.GetProperty("kind").GetString()!) ||
                     !RequiredElementStrings.All(name => Text(element, name)) || !Number(element, "x", 0, double.MaxValue) || !Number(element, "y", 0, double.MaxValue) ||
                     !Number(element, "width", double.Epsilon, 4096) || !Number(element, "height", double.Epsilon, 4096) || !Number(element, "fontSize", 8, 1000) ||
                     !Boolean(element, "locked") || !Boolean(element, "visible") || !Text(element, "action") || !Actions.Contains(element.GetProperty("action").GetString()!)) return false;

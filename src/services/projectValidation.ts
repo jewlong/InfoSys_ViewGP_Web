@@ -15,6 +15,12 @@ export function checkProject(project: Project) {
         !project.screens.some((s) => s.id === e.targetScreenId)
       )
         problems.push(`${s.name} / ${e.name}：未選擇目標畫面`);
+      if (
+        e.kind === "text" &&
+        e.variableId &&
+        !project.variables.some((v) => v.id === e.variableId)
+      )
+        problems.push(`${s.name} / ${e.name}：文字綁定變數不存在`);
       const v = project.variables.find((v) => v.id === e.variableId);
       if (v && ["input", "number"].includes(e.kind) && v.type !== "number")
         problems.push(`${s.name} / ${e.name}：需綁定數值變數`);

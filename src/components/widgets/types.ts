@@ -4,6 +4,7 @@ export type WidgetProps = {
   element: Element;
   values: Record<string, unknown>;
   running: boolean;
+  disabled?: boolean;
   onAction: () => void;
   onInput: (value: string) => void;
 };
@@ -12,4 +13,17 @@ export const widgetStyle = (element: Element): CSSProperties => ({
   height: "100%",
   fontSize: element.fontSize,
   color: element.color,
+});
+
+export const borderStyle = (
+  element: Element,
+  width = 0,
+  radius: number | string = 0,
+): CSSProperties => ({
+  borderWidth: element.borderWidth ?? width,
+  borderStyle: element.borderStyle ?? "solid",
+  borderColor: element.borderColor ?? "#ffffff09",
+  borderRadius:
+    element.kind === "circle" ? "50%" : (element.borderRadius ?? radius),
+  boxSizing: "border-box",
 });

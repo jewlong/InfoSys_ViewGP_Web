@@ -1,3 +1,4 @@
+import { ElementAppearanceFields } from "./ElementAppearanceFields";
 import { Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
 import { labels, type Element } from "../../model";
@@ -55,10 +56,18 @@ export function ElementProperties() {
       </PropertySection>
       <PropertySection title="外觀">
         <Field label="文字 / 標籤">
-          <input
-            value={current.text}
-            onChange={(e) => patch({ text: e.target.value })}
-          />
+          {current.kind === "text" ? (
+            <textarea
+              rows={3}
+              value={current.text}
+              onChange={(e) => patch({ text: e.target.value })}
+            />
+          ) : (
+            <input
+              value={current.text}
+              onChange={(e) => patch({ text: e.target.value })}
+            />
+          )}
         </Field>
         <div className="property-grid">
           <Field label="文字顏色">
@@ -92,6 +101,7 @@ export function ElementProperties() {
           </button>
         )}
       </PropertySection>
+      <ElementAppearanceFields />
       <PropertySection title="資料綁定">
         <Field label="綁定變數">
           <select

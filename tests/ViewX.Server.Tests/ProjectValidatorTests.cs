@@ -17,6 +17,13 @@ public sealed class ProjectValidatorTests
         """;
     [Fact]
     public void ValidProjectPasses() => Assert.True(ProjectValidator.IsValid(JsonDocument.Parse(ValidProject).RootElement));
+    [Fact]
+    public void NullElementIsRejected()
+    {
+        var project = JsonNode.Parse(ValidProject)!;
+        project["screens"]![0]!["elements"]![0] = null;
+        Assert.False(ProjectValidator.IsValid(JsonSerializer.SerializeToElement(project)));
+    }
     [Theory]
     [InlineData("null")]
     [InlineData("[]")]
@@ -30,6 +37,11 @@ public sealed class ProjectValidatorTests
     [InlineData("image", "\"https://example.com/image.png\"")]
     [InlineData("decimals", "2.5")]
     [InlineData("kind", "\"__proto__\"")]
+    [InlineData("fontWeight", "\"heavy\"")]
+    [InlineData("borderWidth", "21")]
+    [InlineData("lineHeight", "0.5")]
+    [InlineData("shapeFilled", "null")]
+    [InlineData("buttonHoverColor", "\"red\"")]
     public void InvalidElementPropertiesAreRejected(string name, string json)
     {
         var project = JsonNode.Parse(ValidProject)!;

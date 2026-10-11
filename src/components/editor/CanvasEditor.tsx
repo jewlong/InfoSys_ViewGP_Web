@@ -175,11 +175,17 @@ export function CanvasEditor() {
                           ? "not-allowed"
                           : "move",
                       pointerEvents:
-                        running && e.enabledId && !values[e.enabledId]
+                        running &&
+                        e.kind !== "button" &&
+                        e.enabledId &&
+                        !values[e.enabledId]
                           ? "none"
                           : undefined,
                       opacity:
-                        running && e.enabledId && !values[e.enabledId]
+                        running &&
+                        e.kind !== "button" &&
+                        e.enabledId &&
+                        !values[e.enabledId]
                           ? 0.5
                           : 1,
                     }}
@@ -199,6 +205,9 @@ export function CanvasEditor() {
                       element={e}
                       values={running ? values : initialValues(project)}
                       running={running}
+                      disabled={Boolean(
+                        running && e.enabledId && !values[e.enabledId],
+                      )}
                       onAction={() => action(e)}
                       onInput={(val) => {
                         const v = project.variables.find(

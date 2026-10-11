@@ -15,7 +15,8 @@
     "test:server": "dotnet test tests/ViewX.Server.Tests/ViewX.Server.Tests.csproj",
     "test:api": "npm run build:server && node tests/api.mjs",
     "publish:server": "dotnet publish server/ViewX.Server.csproj -c Release -o artifacts/server",
-    "test:dev": "npm run build:server && node tests/dev.mjs"
+    "test:dev": "npm run build:server && node tests/dev.mjs",
+    "test:widgets": "npm run build:server && node tests/widgets.mjs"
   },
   "engines": {
     "node": ">=24.0.0"

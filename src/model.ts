@@ -40,6 +40,28 @@ export type Element = {
   decimals?: number;
   conditionId?: string;
   enabledId?: string;
+  fontFamily?: string;
+  fontWeight?: "normal" | "bold";
+  italic?: boolean;
+  underline?: boolean;
+  textAlign?: "left" | "center" | "right";
+  verticalAlign?: "top" | "middle" | "bottom";
+  wordWrap?: boolean;
+  lineHeight?: number;
+  textBackground?: boolean;
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: "none" | "solid" | "dashed" | "dotted";
+  borderRadius?: number;
+  shapeFilled?: boolean;
+  imageFit?: "contain" | "cover" | "fill" | "none";
+  imagePosition?: "center" | "top" | "bottom" | "left" | "right";
+  buttonHoverBackground?: string;
+  buttonHoverColor?: string;
+  buttonPressedBackground?: string;
+  buttonPressedColor?: string;
+  buttonDisabledBackground?: string;
+  buttonDisabledColor?: string;
 };
 export type Screen = {
   id: string;
@@ -305,6 +327,7 @@ export function validateProject(value: unknown): value is Project {
           (e) =>
             e &&
             unique(e.id) &&
+            validateAppearance(e) &&
             Object.hasOwn(labels, e.kind) &&
             ["name", "text", "color", "background", "actionValue"].every(
               (k) => typeof e[k as keyof Element] === "string",
@@ -346,4 +369,62 @@ export function validateProject(value: unknown): value is Project {
         ),
     )
   );
+}
+
+// Optional appearance fields keep existing schema-v1 projects readable.
+export function validateAppearance(e: Element): boolean {
+  const enums = {
+    fontWeight: ["normal", "bold"],
+    textAlign: ["left", "center", "right"],
+    verticalAlign: ["top", "middle", "bottom"],
+    borderStyle: ["none", "solid", "dashed", "dotted"],
+    imageFit: ["contain", "cover", "fill", "none"],
+    imagePosition: ["center", "top", "bottom", "left", "right"],
+  };
+  for (const [key, allowed] of Object.entries(enums)) {
+    const value = e[key as keyof Element];
+    if (value !== undefined && !allowed.includes(value as string)) return false;
+  }
+  for (const key of [
+    "italic",
+    "underline",
+    "wordWrap",
+    "textBackground",
+    "shapeFilled",
+  ] as const)
+    if (e[key] !== undefined && typeof e[key] !== "boolean") return false;
+  for (const [key, min, max] of [
+    ["lineHeight", 1, 3],
+    ["borderWidth", 0, 20],
+    ["borderRadius", 0, 1000],
+  ] as const) {
+    const value = e[key];
+    if (
+      value !== undefined &&
+      (!Number.isFinite(value) || value < min || value > max)
+    )
+      return false;
+  }
+  if (
+    e.fontFamily !== undefined &&
+    (typeof e.fontFamily !== "string" ||
+      !e.fontFamily.length ||
+      e.fontFamily.length > 200)
+  )
+    return false;
+  for (const key of [
+    "borderColor",
+    "buttonHoverBackground",
+    "buttonHoverColor",
+    "buttonPressedBackground",
+    "buttonPressedColor",
+    "buttonDisabledBackground",
+    "buttonDisabledColor",
+  ] as const)
+    if (
+      e[key] !== undefined &&
+      (typeof e[key] !== "string" || !/^#[\da-f]{6}$/i.test(e[key]))
+    )
+      return false;
+  return true;
 }

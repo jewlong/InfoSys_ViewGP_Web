@@ -1493,3 +1493,25 @@ kbd {
   touch-action: none;
   user-select: none;
 }
+
+.runtime-button {
+  background: var(--button-background);
+  color: var(--button-color);
+}
+.runtime-button[data-running="true"]:hover:not(:disabled) {
+  background: var(--button-hover-background);
+  color: var(--button-hover-color);
+}
+.runtime-button[data-running="true"]:active:not(:disabled) {
+  background: var(--button-pressed-background);
+  color: var(--button-pressed-color);
+}
+.runtime-button[data-running="true"]:disabled {
+  background: var(--button-disabled-background);
+  color: var(--button-disabled-color);
+}
+.appearance-hint {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #7a879b;
+}

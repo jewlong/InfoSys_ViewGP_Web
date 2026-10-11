@@ -113,6 +113,21 @@ try {
     ["image", "https://example.com/pixel"],
     ["locked", "yes"],
     ["action", "invalid"],
+    ["fontFamily", ""],
+    ["fontWeight", "heavy"],
+    ["italic", "yes"],
+    ["textAlign", "justify"],
+    ["verticalAlign", "baseline"],
+    ["wordWrap", null],
+    ["lineHeight", 0.5],
+    ["borderWidth", 21],
+    ["borderRadius", -1],
+    ["borderColor", "red"],
+    ["borderStyle", "double"],
+    ["shapeFilled", 1],
+    ["imageFit", "stretch"],
+    ["imagePosition", "outside"],
+    ["buttonPressedColor", "#xyzxyz"],
   ]) {
     const p = structuredClone(project);
     p.screens[0].elements[0][property] = value;
@@ -129,7 +144,31 @@ try {
     );
   }
   const decimals = structuredClone(project);
-  decimals.screens[0].elements[0].decimals = 2;
+  Object.assign(decimals.screens[0].elements[0], {
+    decimals: 2,
+    fontFamily: "serif",
+    fontWeight: "bold",
+    italic: true,
+    underline: true,
+    textAlign: "right",
+    verticalAlign: "bottom",
+    wordWrap: false,
+    lineHeight: 1.5,
+    textBackground: true,
+    borderWidth: 4,
+    borderRadius: 24,
+    borderStyle: "dotted",
+    borderColor: "#ff0000",
+    shapeFilled: false,
+    imageFit: "cover",
+    imagePosition: "top",
+    buttonHoverBackground: "#123456",
+    buttonHoverColor: "#ffffff",
+    buttonPressedBackground: "#654321",
+    buttonPressedColor: "#000000",
+    buttonDisabledBackground: "#222222",
+    buttonDisabledColor: "#aaaaaa",
+  });
   decimals.screens[0].elements[0].image = "data:image/png;base64,aGVsbG8=";
   assert.equal(validateProject(decimals), true);
   assert.equal(

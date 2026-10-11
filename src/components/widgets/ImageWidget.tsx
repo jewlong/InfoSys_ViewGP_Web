@@ -5,7 +5,12 @@ export function ImageWidget({ element }: WidgetProps) {
     <img
       alt={element.text}
       src={element.image}
-      style={{ ...widgetStyle(element), objectFit: "contain" }}
+      style={{
+        ...widgetStyle(element),
+        objectFit: element.imageFit ?? "contain",
+        objectPosition: element.imagePosition ?? "center",
+        background: element.background,
+      }}
       draggable={false}
     />
   ) : (
