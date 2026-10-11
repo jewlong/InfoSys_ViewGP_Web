@@ -33,12 +33,13 @@ export function useEditorCore() {
   const screen =
     project.screens.find((s) => s.id === screenId) ?? project.screens[0];
   const { notice, setNotice, logs, setLogs, notify } = useNotifications();
-  const { mode, setMode, running, values, setValues, action } = useSimulation({
-    project,
-    setScreenId,
-    notify,
-    setLogs,
-  });
+  const { mode, setMode, running, values, setValues, action, input } =
+    useSimulation({
+      project,
+      setScreenId,
+      notify,
+      setLogs,
+    });
   const [zoom, setZoom] = useState(0.75),
     [grid, setGrid] = useState(true),
     [snap, setSnap] = useState(true);
@@ -445,6 +446,7 @@ export function useEditorCore() {
     check,
     start,
     action,
+    input,
     align,
     order,
     extremeOrder,

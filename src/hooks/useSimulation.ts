@@ -1,3 +1,4 @@
+import { evaluateAction, inputError, parseNumber } from "../services/dataRules";
 import { useState, type Dispatch, type SetStateAction } from "react";
 import type { Element, Project } from "../model";
 import { initialValues } from "../utils/project";
@@ -21,39 +22,24 @@ export function useSimulation({
   function action(e: Element) {
     if (!running) return;
     if (e.enabledId && !values[e.enabledId]) return;
-    if (e.action === "screen" && e.kind === "button") {
-      if (e.targetScreenId) setScreenId(e.targetScreenId);
+    const result = evaluateAction(e, project, values);
+    if ("error" in result) {
+      notify(result.error, true);
       return;
     }
-    const variable = project.variables.find((v) => v.id === e.variableId);
-    if (!variable) {
-      notify("元件未綁定變數", true);
-      return;
-    }
-    setValues((old) => {
-      let value: unknown = old[variable.id];
-      if (e.kind === "switch" || e.action === "toggle") {
-        if (variable.type !== "boolean") return old;
-        value = !value;
-      } else if (e.action === "increment") {
-        if (
-          variable.type !== "number" ||
-          !Number.isFinite(Number(e.actionValue))
-        )
-          return old;
-        value = Number(value) + Number(e.actionValue);
-      } else {
-        value =
-          variable.type === "number"
-            ? Number(e.actionValue)
-            : variable.type === "boolean"
-              ? e.actionValue === "true"
-              : e.actionValue;
-        if (variable.type === "number" && !Number.isFinite(value)) return old;
-      }
-      return { ...old, [variable.id]: value };
-    });
+    if ("screenId" in result) setScreenId(result.screenId);
+    else setValues((old) => ({ ...old, [result.variableId]: result.value }));
     setLogs((l) => [`${e.name} · 動作：${e.action}`, ...l].slice(0, 50));
   }
-  return { mode, setMode, running, values, setValues, action };
+  function input(e: Element, raw: string): string | undefined {
+    if (!running || (e.enabledId && !values[e.enabledId])) return "元件未啟用";
+    const variable = project.variables.find((v) => v.id === e.variableId);
+    if (variable?.type !== "number") return "需綁定有效數值變數";
+    const error = inputError(e, raw);
+    if (error) return error;
+    setValues((old) => ({ ...old, [variable.id]: parseNumber(raw)! }));
+    setLogs((old) => [`${e.name} · 輸入：${raw}`, ...old].slice(0, 50));
+    return undefined;
+  }
+  return { mode, setMode, running, values, setValues, action, input };
 }

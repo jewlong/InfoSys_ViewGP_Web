@@ -6,7 +6,7 @@ export type WidgetProps = {
   running: boolean;
   disabled?: boolean;
   onAction: () => void;
-  onInput: (value: string) => void;
+  onInput: (value: string) => string | undefined;
 };
 export const widgetStyle = (element: Element): CSSProperties => ({
   width: "100%",

@@ -1,7 +1,8 @@
+import { ElementDataFields } from "./ElementDataFields";
 import { ElementAppearanceFields } from "./ElementAppearanceFields";
-import { Image as ImageIcon, Plus, Trash2 } from "lucide-react";
+import { Image as ImageIcon, Trash2 } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
-import { labels, type Element } from "../../model";
+import { labels } from "../../model";
 import { widgetRegistry } from "../../registry/widgetRegistry";
 import {
   ColorField,
@@ -10,7 +11,7 @@ import {
   PropertySection,
 } from "../ui/Controls";
 export function ElementProperties() {
-  const { project, selected, current, imageRef, patch, remove, addVariable } =
+  const { project, selected, current, imageRef, patch, remove } =
     useEditorContext();
   if (!current) return null;
   return (
@@ -102,87 +103,7 @@ export function ElementProperties() {
         )}
       </PropertySection>
       <ElementAppearanceFields />
-      <PropertySection title="資料綁定">
-        <Field label="綁定變數">
-          <select
-            value={current.variableId ?? ""}
-            onChange={(e) => patch({ variableId: e.target.value || undefined })}
-          >
-            <option value="">未綁定</option>
-            {project.variables.map((v) => (
-              <option value={v.id} key={v.id}>
-                {v.name} ({v.type})
-              </option>
-            ))}
-          </select>
-        </Field>
-        {current.kind === "number" && (
-          <div className="property-grid">
-            <Field label="小數位數">
-              <NumberField
-                value={current.decimals ?? 0}
-                min={0}
-                max={6}
-                onChange={(v) => patch({ decimals: Math.round(v) })}
-              />
-            </Field>
-            <Field label="單位">
-              <input
-                value={current.unit ?? ""}
-                onChange={(e) => patch({ unit: e.target.value })}
-              />
-            </Field>
-          </div>
-        )}
-        <button className="text-link" onClick={addVariable}>
-          <Plus size={13} />
-          新增專案變數
-        </button>
-      </PropertySection>
-      {(current.kind === "button" || current.kind === "switch") && (
-        <PropertySection title="互動動作">
-          <Field label="動作">
-            <select
-              value={current.kind === "switch" ? "toggle" : current.action}
-              disabled={current.kind === "switch"}
-              onChange={(e) =>
-                patch({ action: e.target.value as Element["action"] })
-              }
-            >
-              <option value="toggle">切換開關</option>
-              <option value="set">設定值</option>
-              <option value="increment">加減數值</option>
-              <option value="screen">切換畫面</option>
-            </select>
-          </Field>
-          {current.action === "screen" && current.kind === "button" ? (
-            <Field label="目標畫面">
-              <select
-                value={current.targetScreenId ?? ""}
-                onChange={(e) => patch({ targetScreenId: e.target.value })}
-              >
-                <option value="">請選擇</option>
-                {project.screens.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          ) : (
-            current.action !== "toggle" && (
-              <Field
-                label={current.action === "increment" ? "增減量" : "設定值"}
-              >
-                <input
-                  value={current.actionValue}
-                  onChange={(e) => patch({ actionValue: e.target.value })}
-                />
-              </Field>
-            )
-          )}
-        </PropertySection>
-      )}
+      <ElementDataFields />
       <PropertySection title="狀態與條件">
         <Field label="顯示條件（布林）">
           <select

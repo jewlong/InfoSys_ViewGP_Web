@@ -29,7 +29,7 @@ export type Element = {
   background: string;
   fontSize: number;
   variableId?: string;
-  action: "toggle" | "set" | "increment" | "screen";
+  action: "toggle" | "set" | "increment" | "screen" | "reset";
   actionValue: string;
   targetScreenId?: string;
   locked: boolean;
@@ -38,6 +38,13 @@ export type Element = {
   image?: string;
   unit?: string;
   decimals?: number;
+  numberFormat?: "decimal" | "integer" | "percent" | "scientific";
+  useGrouping?: boolean;
+  numberPrefix?: string;
+  numberLocale?: "en-US" | "zh-TW" | "de-DE";
+  inputMin?: number;
+  inputMax?: number;
+  inputStep?: number;
   conditionId?: string;
   enabledId?: string;
   fontFamily?: string;
@@ -328,6 +335,7 @@ export function validateProject(value: unknown): value is Project {
             e &&
             unique(e.id) &&
             validateAppearance(e) &&
+            validateDataSettings(e) &&
             Object.hasOwn(labels, e.kind) &&
             ["name", "text", "color", "background", "actionValue"].every(
               (k) => typeof e[k as keyof Element] === "string",
@@ -362,7 +370,9 @@ export function validateProject(value: unknown): value is Project {
                 e.decimals <= 6)) &&
             typeof e.locked === "boolean" &&
             typeof e.visible === "boolean" &&
-            ["toggle", "set", "increment", "screen"].includes(e.action) &&
+            ["toggle", "set", "increment", "screen", "reset"].includes(
+              e.action,
+            ) &&
             (!e.image ||
               (typeof e.image === "string" &&
                 /^data:image\/(png|jpeg|webp|gif);base64,/.test(e.image))),
@@ -427,4 +437,24 @@ export function validateAppearance(e: Element): boolean {
     )
       return false;
   return true;
+}
+
+export function validateDataSettings(e: Element): boolean {
+  if (
+    e.numberFormat !== undefined &&
+    !["decimal", "integer", "percent", "scientific"].includes(e.numberFormat)
+  )
+    return false;
+  if (
+    e.numberLocale !== undefined &&
+    !["en-US", "zh-TW", "de-DE"].includes(e.numberLocale)
+  )
+    return false;
+  if (e.useGrouping !== undefined && typeof e.useGrouping !== "boolean")
+    return false;
+  if (e.numberPrefix !== undefined && typeof e.numberPrefix !== "string")
+    return false;
+  for (const key of ["inputMin", "inputMax", "inputStep"] as const)
+    if (e[key] !== undefined && !Number.isFinite(e[key])) return false;
+  return e.inputStep === undefined || e.inputStep > 0;
 }

@@ -40,6 +40,7 @@ export function CanvasEditor() {
     addElement,
     newScreen,
     action,
+    input,
     down,
     move,
     endDrag,
@@ -176,14 +177,14 @@ export function CanvasEditor() {
                           : "move",
                       pointerEvents:
                         running &&
-                        e.kind !== "button" &&
+                        !["button", "input", "switch"].includes(e.kind) &&
                         e.enabledId &&
                         !values[e.enabledId]
                           ? "none"
                           : undefined,
                       opacity:
                         running &&
-                        e.kind !== "button" &&
+                        !["button", "input", "switch"].includes(e.kind) &&
                         e.enabledId &&
                         !values[e.enabledId]
                           ? 0.5
@@ -209,19 +210,7 @@ export function CanvasEditor() {
                         running && e.enabledId && !values[e.enabledId],
                       )}
                       onAction={() => action(e)}
-                      onInput={(val) => {
-                        const v = project.variables.find(
-                          (v) => v.id === e.variableId,
-                        );
-                        if (
-                          v?.type === "number" &&
-                          Number.isFinite(Number(val))
-                        )
-                          setValues((old) => ({
-                            ...old,
-                            [v.id]: Number(val),
-                          }));
-                      }}
+                      onInput={(val) => input(e, val)}
                     />
                     {!running && selected.includes(e.id) && (
                       <>
