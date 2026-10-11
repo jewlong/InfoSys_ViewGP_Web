@@ -22,8 +22,6 @@ export function useEditorShortcuts(editor: EditorCore) {
   useEffect(() => {
     function key(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
-      if (target.closest('input,textarea,select,[contenteditable="true"]'))
-        return;
       if (e.key === "Escape") {
         if (dialog) setDialog(null);
         else if (menu) setMenu(null);
@@ -31,6 +29,8 @@ export function useEditorShortcuts(editor: EditorCore) {
         else setSelected([]);
         return;
       }
+      if (target.closest('input,textarea,select,[contenteditable="true"]'))
+        return;
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === "s") {
         e.preventDefault();

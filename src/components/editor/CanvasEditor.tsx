@@ -18,6 +18,7 @@ export function CanvasEditor() {
     screen,
     selected,
     setSelected,
+    setDialog,
     current,
     revision,
     dirty,
@@ -172,6 +173,13 @@ export function CanvasEditor() {
                         running && e.enabledId && !values[e.enabledId]
                           ? 0.5
                           : 1,
+                    }}
+                    onContextMenu={(ev) => {
+                      if (running) return;
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      setSelected([e.id]);
+                      setDialog("element");
                     }}
                     onPointerDown={(ev) => down(ev, e)}
                     onPointerMove={move}

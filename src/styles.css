@@ -1471,3 +1471,13 @@ kbd {
     right: 0;
   }
 }
+
+.element-properties-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+.element-properties-dialog .properties {
+  padding: 0;
+}
+.element-properties-dialog .modal-footer {
+  gap: 12px;
+}

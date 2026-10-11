@@ -1,3 +1,4 @@
+import { ElementPropertiesDialog } from "./ElementPropertiesDialog";
 import { AlertCircle, Check, ChevronRight, FolderOpen, X } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
 import { type Variable } from "../../model";
@@ -21,6 +22,7 @@ export function ProjectDialogs() {
     openProject,
     check,
   } = useEditorContext();
+  if (dialog === "element") return <ElementPropertiesDialog />;
   return (
     dialog && (
       <div className="modal-backdrop" onClick={() => setDialog(null)}>

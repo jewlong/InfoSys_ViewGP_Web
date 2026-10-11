@@ -1,5 +1,12 @@
 export type Dialog =
-  "projects" | "project" | "screen" | "variable" | "help" | "check" | null;
+  | "element"
+  | "projects"
+  | "project"
+  | "screen"
+  | "variable"
+  | "help"
+  | "check"
+  | null;
 export type Notice = { text: string; error?: boolean };
 export type ProjectRow = {
   id: string;

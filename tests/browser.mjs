@@ -87,6 +87,42 @@ try {
   await page.keyboard.press("Control+z");
   await page.locator(".canvas-element").last().click();
   assert.equal((await selected.boundingBox()).width, sizeBefore.width);
+  // Right-click targets exactly one component and shares live properties.
+  await page.locator(".canvas-element").nth(0).click();
+  await page
+    .locator(".canvas-element")
+    .last()
+    .click({ modifiers: ["Shift"] });
+  await page.locator(".canvas-element").last().click({ button: "right" });
+  const propertyDialog = page.getByRole("dialog", { name: "元件屬性設定" });
+  await propertyDialog.waitFor();
+  assert.equal(await selected.count(), 1);
+  const widthInput = propertyDialog.getByLabel("寬度", { exact: true });
+  const originalWidth = await widthInput.inputValue();
+  await widthInput.fill(String(Number(originalWidth) + 40));
+  assert.equal(
+    await page
+      .locator(".right-panel")
+      .getByLabel("寬度", { exact: true })
+      .inputValue(),
+    String(Number(originalWidth) + 40),
+  );
+  await page.keyboard.press("Escape");
+  assert.equal(await propertyDialog.count(), 0);
+  await page.keyboard.press("Control+z");
+  await page.locator(".canvas-element").last().click({ button: "right" });
+  await propertyDialog.waitFor();
+  assert.equal(
+    await propertyDialog.getByLabel("寬度", { exact: true }).inputValue(),
+    originalWidth,
+  );
+  await propertyDialog
+    .getByRole("button", { name: "完成", exact: true })
+    .click();
+  await page.getByRole("button", { name: "預覽", exact: true }).click();
+  await page.locator(".canvas-element").last().click({ button: "right" });
+  assert.equal(await propertyDialog.count(), 0);
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "儲存專案", exact: true }).click();
   await page
     .getByRole("status")

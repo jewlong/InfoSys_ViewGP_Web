@@ -35,7 +35,8 @@ export function Field({
   return (
     <label className="field">
       <span>{label}</span>
-      {isValidElement(children) && typeof children.type === "string"
+      {isValidElement(children) &&
+      (typeof children.type === "string" || children.type === NumberField)
         ? cloneElement(
             children as React.ReactElement<{ "aria-label"?: string }>,
             { "aria-label": label },
@@ -64,10 +65,12 @@ export function PropertySection({
 export function NumberField({
   value,
   onChange,
+  "aria-label": ariaLabel,
   suffix,
   min = 0,
   max = 10000,
 }: {
+  "aria-label"?: string;
   value: number;
   onChange: (n: number) => void;
   suffix?: string;
@@ -77,6 +80,7 @@ export function NumberField({
   return (
     <div className="number-field">
       <input
+        aria-label={ariaLabel}
         type="number"
         value={value}
         min={min}

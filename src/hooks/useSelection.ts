@@ -34,7 +34,7 @@ export function useSelection({
     changed: boolean;
   } | null>(null);
   function down(ev: ReactPointerEvent, e: Element) {
-    if (running) return;
+    if (running || ev.button !== 0) return;
     ev.stopPropagation();
     const group = e.groupId
       ? screen.elements.filter((i) => i.groupId === e.groupId).map((i) => i.id)
@@ -93,7 +93,7 @@ export function useSelection({
     c: string,
   ) {
     ev.stopPropagation();
-    if (e.locked) return;
+    if (running || ev.button !== 0 || e.locked) return;
     const startX = ev.clientX,
       startY = ev.clientY,
       snapshot = clone(project);
