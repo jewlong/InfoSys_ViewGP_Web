@@ -6,6 +6,7 @@ namespace ViewX.Server;
 
 public sealed record ProjectSummary(string Id, string Name, long Revision,
     [property: JsonPropertyName("updated_at")] string UpdatedAt);
+public sealed record VersionSummary(long Revision, string CreatedAt);
 public sealed record StoredProject(JsonElement Project, long Revision, string UpdatedAt);
 public sealed record SaveResult(long Revision, string UpdatedAt);
 public sealed class RevisionConflictException() : Exception("專案已有新版本，請重新開啟或另存新專案。");
@@ -69,6 +70,40 @@ public sealed class ProjectStore
         if (!reader.Read()) return null;
         using var document = JsonDocument.Parse(reader.GetString(0));
         return new(document.RootElement.Clone(), reader.GetInt64(1), reader.GetString(2));
+    }
+
+    public IReadOnlyList<VersionSummary> ListVersions(string id)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT revision,created_at FROM versions WHERE project_id=$id ORDER BY revision DESC";
+        command.Parameters.AddWithValue("$id", id);
+        using var reader = command.ExecuteReader();
+        var result = new List<VersionSummary>();
+        while (reader.Read()) result.Add(new(reader.GetInt64(0), reader.GetString(1)));
+        return result;
+    }
+
+    public StoredProject? GetVersion(string id, long revision)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT content,created_at FROM versions WHERE project_id=$id AND revision=$revision";
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$revision", revision);
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
+        using var document = JsonDocument.Parse(reader.GetString(0));
+        return new(document.RootElement.Clone(), revision, reader.GetString(1));
+    }
+
+    // Versions are immutable; Save checks the expected current revision atomically.
+    public StoredProject? Restore(string id, long sourceRevision, long expectedRevision)
+    {
+        var source = GetVersion(id, sourceRevision);
+        if (source is null) return null;
+        var result = Save(source.Project, expectedRevision);
+        return new(source.Project, result.Revision, result.UpdatedAt);
     }
 
     public SaveResult Save(JsonElement project, long expectedRevision)

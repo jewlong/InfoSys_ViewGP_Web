@@ -13,6 +13,7 @@ import { checkProject } from "../services/projectValidation";
 import type { Dialog } from "../types/editor";
 import { clone, initialValues } from "../utils/project";
 import { useEditorShortcuts } from "./useEditorShortcuts";
+import { useImageResources } from "./useImageResources";
 import { useHistory } from "./useHistory";
 import { useNotifications } from "./useNotifications";
 import { useProjectPersistence } from "./useProjectPersistence";
@@ -90,6 +91,17 @@ export function useEditorCore() {
     recordSnapshot,
   });
   const current = screen.elements.find((e) => e.id === selected[0]);
+  const persistence = useProjectPersistence({
+    project,
+    setProject,
+    setHistory,
+    setFuture,
+    setDialog,
+    resetProject,
+    notify,
+    dialog,
+    running,
+  });
   const {
     revision,
     setRevision,
@@ -105,15 +117,8 @@ export function useEditorCore() {
     openProject,
     exportProject,
     importProject,
-  } = useProjectPersistence({
-    project,
-    setProject,
-    setHistory,
-    setFuture,
-    setDialog,
-    resetProject,
-    notify,
-  });
+  } = persistence;
+  const imageResources = useImageResources(project, change, running, notify);
   const screenCount = project.screens.length;
   function change(fn: (project: Project) => void) {
     if (!running) historyState.change(fn);
@@ -142,9 +147,11 @@ export function useEditorCore() {
     );
   }
   function resetProject(p: Project, rev = 0, saved = false) {
+    persistence.retryAutoSave();
     setProject(p);
     setScreenId(p.startScreenId);
     setSelected([]);
+    setClipboard([]);
     setHistory([]);
     setFuture([]);
     setRevision(rev);
@@ -213,6 +220,12 @@ export function useEditorCore() {
   }
   function copy(cut = false) {
     const items = clone(screen.elements.filter((e) => selected.includes(e.id)));
+    for (const item of items) {
+      if (item.imageAssetId)
+        item.image =
+          project.assets?.find((a) => a.id === item.imageAssetId)?.data ??
+          item.image;
+    }
     setClipboard(items);
     if (cut) remove();
     if (items.length)
@@ -223,8 +236,14 @@ export function useEditorCore() {
     const groups = new Map<string, string>();
     const items = clipboard.map((e) => {
       if (e.groupId && !groups.has(e.groupId)) groups.set(e.groupId, uid());
+      const item = clone(e);
+      if (item.imageAssetId) {
+        if (project.assets?.some((a) => a.id === item.imageAssetId))
+          delete item.image;
+        else delete item.imageAssetId;
+      }
       return {
-        ...clone(e),
+        ...item,
         id: uid(),
         name: e.name + " 副本",
         x: Math.min(e.x + 20, screen.width - e.width),
@@ -410,6 +429,8 @@ export function useEditorCore() {
     change((p) => (p.variables = p.variables.filter((v) => v.id !== id)));
   }
   return {
+    ...persistence,
+    ...imageResources,
     project,
     setProject,
     screenId,

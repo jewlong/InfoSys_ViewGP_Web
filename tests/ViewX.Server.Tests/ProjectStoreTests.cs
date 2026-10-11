@@ -58,5 +58,21 @@ public sealed class ProjectStoreTests : IDisposable
         Assert.Equal(2, store.Get("project-1")!.Revision);
     }
 
+    [Fact]
+    public void RestoreCreatesNewVersionAndPreservesHistory()
+    {
+        var store = new ProjectStore(DatabasePath);
+        store.Save(Project("original"), 0);
+        store.Save(Project("changed"), 1);
+        var restored = store.Restore("project-1", 1, 2)!;
+        Assert.Equal(3, restored.Revision);
+        Assert.Equal("original", restored.Project.GetProperty("name").GetString());
+        Assert.Equal("changed", store.GetVersion("project-1", 2)!.Project.GetProperty("name").GetString());
+        Assert.Equal(new long[] { 3, 2, 1 }, store.ListVersions("project-1").Select(v => v.Revision));
+        Assert.Throws<RevisionConflictException>(() => store.Restore("project-1", 2, 2));
+        Assert.Equal(3, store.Get("project-1")!.Revision);
+        Assert.Null(store.Restore("project-1", 999, 3));
+    }
+
     public void Dispose() { if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true); }
 }

@@ -11,6 +11,8 @@ import { downloadProject } from "../services/projectFiles";
 import type { Dialog, ProjectRow } from "../types/editor";
 import { clone } from "../utils/project";
 type Options = {
+  dialog: Dialog;
+  running: boolean;
   project: Project;
   setProject: Dispatch<SetStateAction<Project>>;
   setHistory: Dispatch<SetStateAction<Project[]>>;
@@ -21,6 +23,8 @@ type Options = {
 };
 export function useProjectPersistence({
   project,
+  dialog,
+  running,
   setProject,
   setHistory,
   setFuture,
@@ -35,6 +39,29 @@ export function useProjectPersistence({
     [rows, setRows] = useState<ProjectRow[]>([]),
     [loading, setLoading] = useState(false);
   const saveInFlight = useRef(false);
+  const [autoSaveError, setAutoSaveError] = useState("");
+  const latestSave = useRef(save);
+  latestSave.current = save;
+  useEffect(() => {
+    setAutoSaveError("");
+  }, [project.id]);
+  useEffect(() => {
+    if (
+      !project.autoSave ||
+      !dirty ||
+      saving ||
+      running ||
+      dialog ||
+      autoSaveError ||
+      !validateProject(project)
+    )
+      return;
+    const timer = window.setTimeout(
+      () => void latestSave.current(false, true),
+      2000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [project, dirty, saving, running, dialog, autoSaveError]);
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (dirty) {
@@ -52,8 +79,12 @@ export function useProjectPersistence({
     }
     return !dirty || window.confirm("目前有未儲存的變更，確定離開此專案？");
   }
-  async function save(asNew = false) {
+  async function save(asNew = false, automatic = false) {
     if (saveInFlight.current) return;
+    if (!validateProject(project)) {
+      notify("專案資料格式錯誤，請修正後再儲存", true);
+      return;
+    }
     saveInFlight.current = true;
     setSaving(true);
     const snapshot = clone(project);
@@ -67,16 +98,43 @@ export function useProjectPersistence({
         setProject((prev) => ({
           ...prev,
           id: snapshot.id,
-          name: snapshot.name,
+          name: prev.name === project.name ? snapshot.name : prev.name,
         }));
         setHistory([]);
         setFuture([]);
       }
       setRevision(body.revision);
       setSavedSnapshot(JSON.stringify(snapshot));
-      notify(`已儲存至 SQLite · 版本 ${body.revision}`);
+      setAutoSaveError("");
+      notify(
+        `${automatic ? "已自動儲存" : "已儲存至 SQLite"} · 版本 ${body.revision}`,
+      );
     } catch (e) {
-      notify(e instanceof Error ? e.message : "儲存失敗", true);
+      const message = e instanceof Error ? e.message : "儲存失敗";
+      setAutoSaveError(message);
+      notify(message, true);
+    } finally {
+      saveInFlight.current = false;
+      setSaving(false);
+    }
+  }
+  async function restore(sourceRevision: number) {
+    if (saveInFlight.current) return;
+    saveInFlight.current = true;
+    setSaving(true);
+    try {
+      const data = await projectApi.restoreVersion(
+        project.id,
+        sourceRevision,
+        revision,
+      );
+      resetProject(data.project, data.revision, true);
+      setAutoSaveError("");
+      notify(`已還原，建立版本 ${data.revision}`);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "還原失敗";
+      setAutoSaveError(message);
+      throw e;
     } finally {
       saveInFlight.current = false;
       setSaving(false);
@@ -125,6 +183,9 @@ export function useProjectPersistence({
     }
   }
   return {
+    restore,
+    autoSaveError,
+    retryAutoSave: () => setAutoSaveError(""),
     revision,
     setRevision,
     savedSnapshot,

@@ -1,3 +1,5 @@
+import { VersionHistoryDialog } from "./VersionHistoryDialog";
+import { ImageResourcesDialog } from "./ImageResourcesDialog";
 import { ElementPropertiesDialog } from "./ElementPropertiesDialog";
 import { AlertCircle, Check, ChevronRight, FolderOpen, X } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
@@ -22,6 +24,8 @@ export function ProjectDialogs() {
     openProject,
     check,
   } = useEditorContext();
+  if (dialog === "versions") return <VersionHistoryDialog />;
+  if (dialog === "assets") return <ImageResourcesDialog />;
   if (dialog === "element") return <ElementPropertiesDialog />;
   return (
     dialog && (
@@ -91,6 +95,22 @@ export function ProjectDialogs() {
               ))}
             {dialog === "project" && (
               <>
+                <label className="check-field">
+                  <input
+                    type="checkbox"
+                    checked={project.autoSave ?? false}
+                    onChange={(e) =>
+                      change((p) => {
+                        p.autoSave = e.target.checked;
+                      })
+                    }
+                  />
+                  啟用自動儲存
+                </label>
+                <p className="muted">
+                  編輯停止 2
+                  秒後儲存；關閉設定視窗後開始。儲存失敗時暫停，避免覆蓋他人版本。
+                </p>
                 <Field label="專案名稱">
                   <input
                     value={project.name}

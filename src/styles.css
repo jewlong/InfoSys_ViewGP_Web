@@ -1679,3 +1679,73 @@ kbd {
   align-items: center;
   justify-content: space-between;
 }
+
+.management-modal {
+  width: min(1040px, 95vw);
+}
+.version-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 20px;
+}
+.version-list {
+  max-height: 500px;
+  overflow: auto;
+}
+.version-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px;
+  margin-bottom: 4px;
+}
+.version-list small {
+  display: block;
+  color: #8c9bb0;
+  margin-top: 4px;
+}
+.version-list .active {
+  background: #294561;
+}
+.version-preview {
+  overflow: hidden;
+  pointer-events: none;
+  margin: 16px 0;
+  border: 1px solid #41516a;
+}
+.resource-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.resource-card {
+  padding: 12px;
+  border: 1px solid #34435b;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+}
+.resource-card img {
+  width: 100%;
+  height: 140px;
+  object-fit: contain;
+  background: #182235;
+}
+.resource-card div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+@media (max-width: 700px) {
+  .version-layout {
+    grid-template-columns: 1fr;
+  }
+  .version-list {
+    max-height: 160px;
+  }
+}

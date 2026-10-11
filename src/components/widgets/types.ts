@@ -1,8 +1,9 @@
 import type { AlarmEvent, TrendPoint } from "../../types/runtime";
 import type { CSSProperties } from "react";
-import type { Element } from "../../model";
+import type { ImageAsset, Element } from "../../model";
 export type WidgetProps = {
   element: Element;
+  assets?: ImageAsset[];
   values: Record<string, unknown>;
   running: boolean;
   disabled?: boolean;

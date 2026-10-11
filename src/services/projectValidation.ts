@@ -10,7 +10,11 @@ export function checkProject(project: Project) {
         ...advancedProblems(e, project),
       ])
         problems.push(`${s.name} / ${e.name}：${problem}`);
-      if (e.kind === "image" && !e.image)
+      if (
+        e.kind === "image" &&
+        !e.image &&
+        !project.assets?.some((a) => a.id === e.imageAssetId)
+      )
         problems.push(`${s.name} / ${e.name}：尚未設定圖片`);
       if (
         e.x < 0 ||

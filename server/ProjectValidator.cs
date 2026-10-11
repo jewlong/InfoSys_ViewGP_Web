@@ -26,6 +26,19 @@ public static class ProjectValidator
     {
         if (!Number(project, "schemaVersion", 1, 1) || !Text(project, "id") || !Text(project, "name") || !Text(project, "description") || !Text(project, "startScreenId") ||
             !Array(project, "screens", out var screens) || screens.GetArrayLength() == 0 || !Array(project, "variables", out var variables)) return false;
+        if (Property(project, "autoSave", out var autoSave) && autoSave.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return false;
+        var assetIds = new HashSet<string>(StringComparer.Ordinal);
+        if (Property(project, "assets", out var assets))
+        {
+            if (assets.ValueKind != JsonValueKind.Array || assets.GetArrayLength() > 100) return false;
+            foreach (var asset in assets.EnumerateArray())
+            {
+                if (!Unique(asset, assetIds) || !Text(asset, "name") || string.IsNullOrWhiteSpace(asset.GetProperty("name").GetString()) ||
+                    asset.GetProperty("name").GetString()!.Length > 200 || !Text(asset, "data")) return false;
+                var data = asset.GetProperty("data").GetString()!;
+                if (data.Length > 4 * 1024 * 1024 + 30 || !System.Text.RegularExpressions.Regex.IsMatch(data, @"\Adata:image/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}\z")) return false;
+            }
+        }
         var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var variable in variables.EnumerateArray())
         {
@@ -47,6 +60,7 @@ public static class ProjectValidator
             if (screen.GetProperty("id").GetString() == project.GetProperty("startScreenId").GetString()) startFound = true;
             foreach (var element in elements.EnumerateArray())
             {
+                if (Property(element, "imageAssetId", out var assetId) && (assetId.ValueKind != JsonValueKind.String || !assetIds.Contains(assetId.GetString()!))) return false;
                 if (!AppearanceValidator.IsValid(element) || !DataSettingsValidator.IsValid(element) || !AdvancedSettingsValidator.IsValid(element) || !Unique(element, ids) || !Text(element, "kind") || !Kinds.Contains(element.GetProperty("kind").GetString()!) ||
                     !RequiredElementStrings.All(name => Text(element, name)) || !Number(element, "x", 0, double.MaxValue) || !Number(element, "y", 0, double.MaxValue) ||
                     !Number(element, "width", double.Epsilon, 4096) || !Number(element, "height", double.Epsilon, 4096) || !Number(element, "fontSize", 8, 1000) ||

@@ -12,7 +12,7 @@ import {
   PropertySection,
 } from "../ui/Controls";
 export function ElementProperties() {
-  const { project, selected, current, imageRef, patch, remove } =
+  const { project, selected, current, imageRef, patch, remove, setDialog } =
     useEditorContext();
   if (!current) return null;
   return (
@@ -93,6 +93,14 @@ export function ElementProperties() {
             suffix="px"
           />
         </Field>
+        {current.kind === "image" && (
+          <button
+            className="secondary-btn full"
+            onClick={() => setDialog("assets")}
+          >
+            從圖片資源庫選取
+          </button>
+        )}
         {current.kind === "image" && (
           <button
             className="secondary-btn full"

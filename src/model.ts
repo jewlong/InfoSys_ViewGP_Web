@@ -49,6 +49,7 @@ export type Element = {
   visible: boolean;
   groupId?: string;
   image?: string;
+  imageAssetId?: string;
   unit?: string;
   decimals?: number;
   numberFormat?: "decimal" | "integer" | "percent" | "scientific";
@@ -104,7 +105,10 @@ export type Screen = {
   background: string;
   elements: Element[];
 };
+export type ImageAsset = { id: string; name: string; data: string };
 export type Project = {
+  assets?: ImageAsset[];
+  autoSave?: boolean;
   schemaVersion: 1;
   id: string;
   name: string;
@@ -353,6 +357,30 @@ export function validateProject(value: unknown): value is Project {
     !Array.isArray(p.variables)
   )
     return false;
+  if (p.autoSave !== undefined && typeof p.autoSave !== "boolean") return false;
+  const assetIds = new Set<string>();
+  if (
+    p.assets !== undefined &&
+    (!Array.isArray(p.assets) ||
+      p.assets.length > 100 ||
+      !p.assets.every(
+        (a) =>
+          a &&
+          typeof a.id === "string" &&
+          a.id.length > 0 &&
+          !assetIds.has(a.id) &&
+          (assetIds.add(a.id), true) &&
+          typeof a.name === "string" &&
+          a.name.trim().length > 0 &&
+          a.name.length <= 200 &&
+          typeof a.data === "string" &&
+          a.data.length <= 4 * 1024 * 1024 + 30 &&
+          /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}(?![\s\S])/.test(
+            a.data,
+          ),
+      ))
+  )
+    return false;
   const ids = new Set<string>();
   const unique = (id: unknown) =>
     typeof id === "string" &&
@@ -391,6 +419,7 @@ export function validateProject(value: unknown): value is Project {
           (e) =>
             e &&
             unique(e.id) &&
+            (e.imageAssetId === undefined || assetIds.has(e.imageAssetId)) &&
             validateAppearance(e) &&
             validateDataSettings(e) &&
             validateAdvancedSettings(e) &&

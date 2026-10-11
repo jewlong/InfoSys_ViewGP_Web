@@ -18,7 +18,8 @@
     "test:dev": "npm run build:server && node tests/dev.mjs",
     "test:widgets": "npm run build:server && node tests/widgets.mjs",
     "test:interactions": "npm run build:server && node tests/interactions.mjs",
-    "test:advanced": "npm run build:server && node tests/advanced-browser.mjs"
+    "test:advanced": "npm run build:server && node tests/advanced-browser.mjs",
+    "test:management": "npm run build:server && node tests/management.mjs"
   },
   "engines": {
     "node": ">=24.0.0"

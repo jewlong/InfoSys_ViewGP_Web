@@ -72,6 +72,16 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
         disabled: running,
       },
       { label: "匯出專案", fn: exportProject },
+      {
+        label: "版本紀錄與還原",
+        fn: () => setDialog("versions"),
+        disabled: running || editor.saving,
+      },
+      {
+        label: "圖片資源管理",
+        fn: () => setDialog("assets"),
+        disabled: running,
+      },
       { label: "專案設定", fn: () => setDialog("project"), disabled: running },
     ],
     編輯: [

@@ -53,6 +53,30 @@ app.MapPut("/api/projects/{id}", async (string id, HttpRequest request, ProjectS
         return Results.Json(db.Save(project, expectedRevision));
     }
 });
+app.MapGet("/api/projects/{id}/versions", (string id, ProjectStore db) =>
+    db.Get(id) is null ? Results.Json(new { error = "找不到專案" }, statusCode: 404) : Results.Json(db.ListVersions(id)));
+app.MapGet("/api/projects/{id}/versions/{revision:long}", (string id, long revision, ProjectStore db) =>
+    db.GetVersion(id, revision) is { } version ? Results.Json(version) : Results.Json(new { error = "找不到版本" }, statusCode: 404));
+app.MapPost("/api/projects/{id}/restore", async (string id, HttpRequest request, ProjectStore db) =>
+{
+    var origin = request.Headers.Origin.ToString();
+    if (origin.Length > 0 && origin != $"{request.Scheme}://{request.Host}")
+        return Results.Json(new { error = "不允許跨來源寫入" }, statusCode: 403);
+    if (request.ContentType?.Split(';')[0].Trim().Equals("application/json", StringComparison.OrdinalIgnoreCase) != true)
+        return Results.Json(new { error = "請使用 JSON 格式" }, statusCode: 415);
+    JsonDocument document;
+    try { document = await JsonDocument.ParseAsync(request.Body, cancellationToken: request.HttpContext.RequestAborted); }
+    catch (JsonException) { return Results.Json(new { error = "JSON 格式錯誤" }, statusCode: 400); }
+    using (document)
+    {
+        var body = document.RootElement;
+        if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty("revision", out var revision) || revision.ValueKind != JsonValueKind.Number ||
+            !revision.TryGetInt64(out var expected) || expected < 1 || expected >= 9_007_199_254_740_991 ||
+            !body.TryGetProperty("sourceRevision", out var source) || source.ValueKind != JsonValueKind.Number || !source.TryGetInt64(out var sourceRevision) || sourceRevision < 1)
+            return Results.Json(new { error = "版本格式錯誤" }, statusCode: 400);
+        return db.Restore(id, sourceRevision, expected) is { } restored ? Results.Json(restored) : Results.Json(new { error = "找不到版本" }, statusCode: 404);
+    }
+});
 app.Map("/api/{**path}", () => Results.Json(new { error = "API 不存在" }, statusCode: 404));
 var frontendPath = Directory.Exists(Path.Combine(repositoryRoot, "dist"))
     ? Path.Combine(repositoryRoot, "dist") : Path.Combine(app.Environment.ContentRootPath, "wwwroot");

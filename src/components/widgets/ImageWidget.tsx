@@ -1,10 +1,12 @@
 import { Image as ImageIcon } from "lucide-react";
 import { widgetStyle, type WidgetProps } from "./types";
-export function ImageWidget({ element }: WidgetProps) {
-  return element.image ? (
+export function ImageWidget({ element, assets }: WidgetProps) {
+  const source =
+    assets?.find((a) => a.id === element.imageAssetId)?.data ?? element.image;
+  return source ? (
     <img
       alt={element.text}
-      src={element.image}
+      src={source}
       style={{
         ...widgetStyle(element),
         objectFit: element.imageFit ?? "contain",

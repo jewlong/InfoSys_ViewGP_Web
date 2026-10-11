@@ -227,10 +227,12 @@ export function ElementAppearanceFields() {
               <option value="right">靠右</option>
             </select>
           </Field>
-          {e.image && (
+          {(e.image || e.imageAssetId) && (
             <button
               className="secondary-btn full"
-              onClick={() => patch({ image: undefined })}
+              onClick={() =>
+                patch({ image: undefined, imageAssetId: undefined })
+              }
             >
               移除圖片
             </button>

@@ -23,8 +23,9 @@ export function useEditorShortcuts(editor: EditorCore) {
     function key(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       if (e.key === "Escape") {
-        if (dialog) setDialog(null);
-        else if (menu) setMenu(null);
+        if (dialog) {
+          if (!editor.saving) setDialog(null);
+        } else if (menu) setMenu(null);
         else if (running) setMode("edit");
         else setSelected([]);
         return;

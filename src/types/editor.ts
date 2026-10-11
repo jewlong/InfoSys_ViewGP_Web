@@ -1,4 +1,6 @@
 export type Dialog =
+  | "versions"
+  | "assets"
   | "element"
   | "projects"
   | "project"

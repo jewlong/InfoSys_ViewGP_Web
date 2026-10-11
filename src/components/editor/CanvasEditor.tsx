@@ -20,6 +20,9 @@ export function CanvasEditor() {
     setSelected,
     setDialog,
     current,
+    autoSaveError,
+    retryAutoSave,
+    saving,
     revision,
     dirty,
     running,
@@ -206,6 +209,7 @@ export function CanvasEditor() {
                     onPointerCancel={endDrag}
                   >
                     <WidgetRenderer
+                      assets={project.assets}
                       element={e}
                       values={running ? values : initialValues(project)}
                       running={running}
@@ -277,6 +281,20 @@ export function CanvasEditor() {
         </span>
         <div className="status-right">
           <span>{snap ? "吸附：10 px" : "吸附：關閉"}</span>
+          {project.autoSave && (
+            <span title={autoSaveError}>
+              {saving
+                ? "自動儲存：儲存中"
+                : autoSaveError
+                  ? "自動儲存：已暫停"
+                  : dirty
+                    ? "自動儲存：等待儲存"
+                    : "自動儲存：已同步"}
+            </span>
+          )}
+          {project.autoSave && autoSaveError && (
+            <button onClick={retryAutoSave}>重試自動儲存</button>
+          )}
           <span>{revision ? `SQLite · v${revision}` : "尚未儲存"}</span>
           <span>{Math.round(zoom * 100)}%</span>
         </div>
