@@ -1,7 +1,8 @@
 import type { EditorCore } from "../hooks/useEditor";
-import { labels, newProject, uid, type Kind } from "../model";
+import { newProject, uid } from "../model";
 import { isPopup } from "../services/screenRules";
 import type { MenuItems } from "../types/editor";
+import { groupedWidgets, widgetRegistry } from "./widgetRegistry";
 export const editingMenus = ["編輯", "畫面", "元件", "排列", "變數"];
 export function createEditorMenus(editor: EditorCore): MenuItems {
   const {
@@ -153,10 +154,13 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
         fn: () => change((p) => (p.startScreenId = screen.id)),
       },
     ],
-    元件: Object.entries(labels).map(([k, label]) => ({
-      label,
-      fn: () => addElement(k as Kind),
-    })),
+    元件: groupedWidgets().flatMap((group) =>
+      group.kinds.map((kind) => ({
+        label: widgetRegistry[kind].label,
+        category: group.label,
+        fn: () => addElement(kind),
+      })),
+    ),
     排列: [
       { label: "靠左對齊", fn: () => align("left") },
       { label: "靠右對齊", fn: () => align("right") },

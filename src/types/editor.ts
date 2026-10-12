@@ -18,5 +18,11 @@ export type ProjectRow = {
 };
 export type MenuItems = Record<
   string,
-  { label: string; fn: () => void; shortcut?: string; disabled?: boolean }[]
+  {
+    label: string;
+    fn: () => void;
+    shortcut?: string;
+    disabled?: boolean;
+    category?: string;
+  }[]
 >;

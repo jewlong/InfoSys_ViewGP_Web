@@ -1,4 +1,5 @@
 import { useEditorContext } from "../../context/EditorContext";
+import { Fragment } from "react";
 export function MenuBar() {
   const { running, right, menu, setMenu, menuItems, editingMenus } =
     useEditorContext();
@@ -19,18 +20,23 @@ export function MenuBar() {
           </button>
           {menu === name && (
             <div className="menu-dropdown">
-              {items.map((item) => (
-                <button
-                  key={item.label}
-                  disabled={item.disabled}
-                  onClick={() => {
-                    setMenu(null);
-                    item.fn();
-                  }}
-                >
-                  <span>{item.label}</span>
-                  <kbd>{item.shortcut}</kbd>
-                </button>
+              {items.map((item, index) => (
+                <Fragment key={item.label}>
+                  {item.category &&
+                    items[index - 1]?.category !== item.category && (
+                      <div className="menu-category-label">{item.category}</div>
+                    )}
+                  <button
+                    disabled={item.disabled}
+                    onClick={() => {
+                      setMenu(null);
+                      item.fn();
+                    }}
+                  >
+                    <span>{item.label}</span>
+                    <kbd>{item.shortcut}</kbd>
+                  </button>
+                </Fragment>
               ))}
             </div>
           )}

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import {
   LayoutDashboard,
+  ChevronDown,
+  ChevronRight,
   MousePointer2,
   Plus,
   Search,
@@ -9,13 +11,20 @@ import {
   Variable as VariableIcon,
 } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
-import { labels, type Kind } from "../../model";
-import { widgetRegistry } from "../../registry/widgetRegistry";
+import { labels } from "../../model";
+import {
+  groupedWidgets,
+  widgetRegistry,
+  type WidgetCategory,
+} from "../../registry/widgetRegistry";
 import { SYSTEM_VARIABLES } from "../../services/systemVariables";
 import { clone } from "../../utils/project";
 import { isPopup, parentScreenId } from "../../services/screenRules";
 export function LeftPanel() {
-  const [varCategory, setVarCategory] = useState<"project" | "system">("project");
+  const [varCategory, setVarCategory] = useState<"project" | "system">(
+    "project",
+  );
+  const [collapsed, setCollapsed] = useState<WidgetCategory[]>([]);
   const {
     project,
     setScreenId,
@@ -42,6 +51,7 @@ export function LeftPanel() {
     deleteVariable,
     popupIds,
   } = useEditorContext();
+  const groups = groupedWidgets(search);
   return (
     <aside className="left-panel">
       <div className="section-heading">
@@ -107,7 +117,10 @@ export function LeftPanel() {
               aria-label="搜尋元件"
               placeholder="搜尋元件…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCollapsed([]);
+              }}
             />
             <kbd>⌕</kbd>
           </div>
@@ -115,27 +128,64 @@ export function LeftPanel() {
             <div className="library-label">
               COMPONENTS <span>元件庫</span>
             </div>
-            <div className="component-grid">
-              {(Object.keys(widgetRegistry) as Kind[])
-                .filter((k) => labels[k].includes(search))
-                .map((k) => {
-                  const Icon = widgetRegistry[k].icon;
-                  return (
-                    <button
-                      key={k}
-                      disabled={running}
-                      draggable={!running}
-                      onDragStart={(e) =>
-                        e.dataTransfer.setData("viewx-kind", k)
-                      }
-                      onClick={() => addElement(k)}
-                    >
-                      <Icon size={21} strokeWidth={1.5} />
-                      <span>{labels[k]}</span>
-                    </button>
-                  );
-                })}
-            </div>
+            {groups.map((group) => (
+              <section
+                className="widget-category"
+                key={group.id}
+                aria-label={group.label}
+              >
+                <button
+                  className="widget-category-heading"
+                  aria-expanded={!collapsed.includes(group.id)}
+                  aria-controls={`widget-group-${group.id}`}
+                  onClick={() =>
+                    setCollapsed((old) =>
+                      old.includes(group.id)
+                        ? old.filter((id) => id !== group.id)
+                        : [...old, group.id],
+                    )
+                  }
+                >
+                  {collapsed.includes(group.id) ? (
+                    <ChevronRight size={14} />
+                  ) : (
+                    <ChevronDown size={14} />
+                  )}
+                  <span>{group.label}</span>
+                  <span className="widget-category-count">
+                    {group.kinds.length}
+                  </span>
+                </button>
+                <div
+                  className="component-grid"
+                  id={`widget-group-${group.id}`}
+                  hidden={collapsed.includes(group.id)}
+                >
+                  {group.kinds.map((k) => {
+                    const Icon = widgetRegistry[k].icon;
+                    return (
+                      <button
+                        key={k}
+                        disabled={running}
+                        draggable={!running}
+                        onDragStart={(e) =>
+                          e.dataTransfer.setData("viewx-kind", k)
+                        }
+                        onClick={() => addElement(k)}
+                      >
+                        <Icon size={21} strokeWidth={1.5} />
+                        <span>{labels[k]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+            {!groups.length && (
+              <p className="library-empty" role="status">
+                找不到符合的元件
+              </p>
+            )}
             <div className="library-tip">
               <MousePointer2 size={16} />
               <span>
@@ -166,7 +216,8 @@ export function LeftPanel() {
                 border: "none",
                 borderRadius: "3px",
                 cursor: "pointer",
-                background: varCategory === "project" ? "#3b82f6" : "transparent",
+                background:
+                  varCategory === "project" ? "#3b82f6" : "transparent",
                 color: "#ffffff",
               }}
               onClick={() => setVarCategory("project")}
@@ -181,7 +232,8 @@ export function LeftPanel() {
                 border: "none",
                 borderRadius: "3px",
                 cursor: "pointer",
-                background: varCategory === "system" ? "#3b82f6" : "transparent",
+                background:
+                  varCategory === "system" ? "#3b82f6" : "transparent",
                 color: "#ffffff",
               }}
               onClick={() => setVarCategory("system")}
@@ -263,7 +315,9 @@ export function LeftPanel() {
             <>
               <div className="variable-heading">
                 系統內部接點與暫存器
-                <span style={{ fontSize: "11px", color: "#94a3b8" }}>唯讀 (RO)</span>
+                <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                  唯讀 (RO)
+                </span>
               </div>
               <div className="search-box">
                 <Search size={14} />
@@ -311,7 +365,6 @@ export function LeftPanel() {
             </>
           )}
         </div>
-
       )}
       <div className="left-footer">
         <span className="version-dot" />
