@@ -40,6 +40,8 @@ export function useEditorCore() {
     running,
     values,
     setValues,
+    activeDialogId,
+    closeActiveDialog,
     action,
     momentaryAction,
     input,
@@ -284,6 +286,20 @@ export function useEditorCore() {
     setScreenId(s.id);
     setSelected([]);
   }
+  function newDialog() {
+    const d: Screen = {
+      id: uid(),
+      name: `對話盒 ${screenCount + 1}`,
+      type: "dialog",
+      width: 480,
+      height: 320,
+      background: "#1e293b",
+      elements: [],
+    };
+    change((p) => p.screens.push(d));
+    setScreenId(d.id);
+    setSelected([]);
+  }
   function deleteScreen() {
     if (screenCount === 1) {
       notify("專案至少需要一個畫面", true);
@@ -511,12 +527,15 @@ export function useEditorCore() {
     copy,
     paste,
     newScreen,
+    newDialog,
     deleteScreen,
     check,
     start,
     action,
     momentaryAction,
     input,
+    activeDialogId,
+    closeActiveDialog,
     resetSimulation,
     trendData,
     alarmEvents,

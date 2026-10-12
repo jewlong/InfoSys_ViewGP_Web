@@ -24,7 +24,9 @@ export type Action =
   | "screen"
   | "reset"
   | "momentary"
-  | "previousScreen";
+  | "previousScreen"
+  | "openDialog"
+  | "closeDialog";
 export type MultistateItem = {
   value: number;
   label: string;
@@ -132,6 +134,8 @@ export type Screen = {
   width: number;
   height: number;
   background: string;
+  type?: "screen" | "dialog";
+  inheritsScreenId?: string;
   elements: Element[];
 };
 export type ImageAsset = { id: string; name: string; data: string };
@@ -497,6 +501,9 @@ export function validateProject(value: unknown): value is Project {
         s.height >= 100 &&
         s.height <= 4096 &&
         typeof s.background === "string" &&
+        (s.type === undefined || ["screen", "dialog"].includes(s.type)) &&
+        (s.inheritsScreenId === undefined ||
+          typeof s.inheritsScreenId === "string") &&
         Array.isArray(s.elements) &&
         s.elements.length <= 2000 &&
         s.elements.every(
@@ -552,6 +559,8 @@ export function validateProject(value: unknown): value is Project {
               "reset",
               "momentary",
               "previousScreen",
+              "openDialog",
+              "closeDialog",
             ].includes(e.action) &&
             (!e.image ||
               (typeof e.image === "string" &&

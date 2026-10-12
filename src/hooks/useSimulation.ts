@@ -27,6 +27,7 @@ export function useSimulation({
     initialValues(project, screenId),
   );
   const [epoch, setEpoch] = useState(0);
+  const [activeDialogId, setActiveDialogId] = useState<string | null>(null);
   const runtimeData = useRuntimeData(project, values, running, epoch);
 
   useEffect(() => {
@@ -49,7 +50,12 @@ export function useSimulation({
   function resetSimulation() {
     setValues(initialValues(project, screenId));
     setScreenHistory([]);
+    setActiveDialogId(null);
     setEpoch((value) => value + 1);
+  }
+
+  function closeActiveDialog() {
+    setActiveDialogId(null);
   }
 
   function action(e: Element) {
@@ -60,20 +66,30 @@ export function useSimulation({
       notify(result.error, true);
       return;
     }
-    if ("actionType" in result && result.actionType === "previousScreen") {
-      if (screenHistory.length > 0) {
-        const prev = screenHistory[screenHistory.length - 1];
-        setScreenHistory((hist) => hist.slice(0, -1));
-        setScreenId(prev);
-        setLogs((l) => [`${e.name} · 回上一畫面`, ...l].slice(0, 50));
-      } else {
-        notify("已無上一畫面記錄", false);
+    if ("actionType" in result) {
+      if (result.actionType === "previousScreen") {
+        if (screenHistory.length > 0) {
+          const prev = screenHistory[screenHistory.length - 1];
+          setScreenHistory((hist) => hist.slice(0, -1));
+          setScreenId(prev);
+          setActiveDialogId(null);
+          setLogs((l) => [`${e.name} · 回上一畫面`, ...l].slice(0, 50));
+        } else {
+          notify("已無上一畫面記錄", false);
+        }
+      } else if (result.actionType === "openDialog") {
+        setActiveDialogId(result.dialogId);
+        setLogs((l) => [`${e.name} · 開啟對話盒`, ...l].slice(0, 50));
+      } else if (result.actionType === "closeDialog") {
+        setActiveDialogId(null);
+        setLogs((l) => [`${e.name} · 關閉對話盒`, ...l].slice(0, 50));
       }
       return;
     }
     if ("screenId" in result) {
       setScreenHistory((hist) => [...hist, screenId]);
       setScreenId(result.screenId);
+      setActiveDialogId(null);
     } else if ("variableId" in result) {
       setValues((old) => ({ ...old, [result.variableId]: result.value }));
     }
@@ -105,6 +121,8 @@ export function useSimulation({
     running,
     values,
     setValues,
+    activeDialogId,
+    closeActiveDialog,
     action,
     momentaryAction,
     input,

@@ -10,7 +10,12 @@ export function bindingTypes(e: Element): Variable["type"][] {
   if (["text", "datetime"].includes(e.kind))
     return ["number", "boolean", "string"];
   if (e.kind === "button") {
-    if (["screen", "previousScreen"].includes(e.action)) return [];
+    if (
+      ["screen", "previousScreen", "openDialog", "closeDialog"].includes(
+        e.action,
+      )
+    )
+      return [];
     if (["toggle", "momentary"].includes(e.action)) return ["boolean"];
     if (e.action === "increment") return ["number"];
     return ["number", "boolean", "string"];
@@ -58,7 +63,10 @@ export function bindingProblems(e: Element, project: Project): string[] {
     : project.variables.find((v) => v.id === e.variableId);
   const types = bindingTypes(e);
   const isNavigationAction =
-    e.kind === "button" && ["screen", "previousScreen"].includes(e.action);
+    e.kind === "button" &&
+    ["screen", "previousScreen", "openDialog", "closeDialog"].includes(
+      e.action,
+    );
   const required =
     [
       "number",
@@ -110,6 +118,11 @@ export function bindingProblems(e: Element, project: Project): string[] {
       !project.screens.some((s) => s.id === e.targetScreenId)
     )
       errors.push("未選擇有效目標畫面");
+    if (
+      e.action === "openDialog" &&
+      !project.screens.some((s) => s.id === e.targetScreenId)
+    )
+      errors.push("未選擇有效目標對話盒");
     if (variable && ["set", "increment"].includes(e.action)) {
       if (
         variable.type === "number" &&
@@ -162,10 +175,17 @@ export function actionPatch(
     variables.find((v) => types.includes(v.type));
   return {
     action,
-    variableId: ["screen", "previousScreen"].includes(action)
+    variableId: [
+      "screen",
+      "previousScreen",
+      "openDialog",
+      "closeDialog",
+    ].includes(action)
       ? undefined
       : variable?.id,
-    ...(action === "screen" ? { targetScreenId: e.targetScreenId } : {}),
+    ...(action === "screen" || action === "openDialog"
+      ? { targetScreenId: e.targetScreenId }
+      : {}),
     ...(action === "set" && variable
       ? { actionValue: String(variable.initial) }
       : action === "increment" && parseNumber(e.actionValue) === undefined
@@ -181,7 +201,8 @@ export function evaluateAction(
 ):
   | { error: string }
   | { screenId: string }
-  | { actionType: "previousScreen" }
+  | { actionType: "previousScreen" | "closeDialog" }
+  | { actionType: "openDialog"; dialogId: string }
   | { variableId: string; value: number | boolean | string } {
   const errors = bindingProblems(e, project);
   if (errors.length) return { error: errors[0] };
@@ -189,6 +210,10 @@ export function evaluateAction(
     return { screenId: e.targetScreenId! };
   if (e.kind === "button" && e.action === "previousScreen")
     return { actionType: "previousScreen" };
+  if (e.kind === "button" && e.action === "openDialog")
+    return { actionType: "openDialog", dialogId: e.targetScreenId! };
+  if (e.kind === "button" && e.action === "closeDialog")
+    return { actionType: "closeDialog" };
   const variable = project.variables.find((v) => v.id === e.variableId);
   if (!variable) return { error: "元件未綁定有效變數" };
   let value: number | boolean | string;
