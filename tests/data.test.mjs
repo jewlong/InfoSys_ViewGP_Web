@@ -191,3 +191,53 @@ test("new data settings remain optional and reject malformed fields", () => {
     assert.equal(validateProject(q), false, key);
   }
 });
+
+test("system variables binding, momentary action, and previous screen navigation", () => {
+  const p = fixture();
+  // Valid binding of system variable to text
+  const textElem = {
+    ...makeElement("text"),
+    variableId: "$SYS.TIME",
+  };
+  assert.equal(bindingProblems(textElem, p).length, 0);
+
+  // Type mismatch: binding string system variable to numeric widget
+  const numElem = {
+    ...makeElement("number"),
+    variableId: "$SYS.TIME",
+  };
+  assert.ok(bindingProblems(numElem, p).some((msg) => msg.includes("綁定類型不符")));
+
+  // Button write to system variable is rejected (read-only)
+  const btnElem = {
+    ...makeElement("button"),
+    variableId: "$SYS.TICK_1S",
+    action: "toggle",
+  };
+  assert.ok(bindingProblems(btnElem, p).some((msg) => msg.includes("唯讀")));
+
+  // Momentary button action evaluation
+  const momentaryBtn = {
+    ...makeElement("button"),
+    variableId: "b",
+    action: "momentary",
+    actionValue: "true",
+  };
+  const resDown = evaluateAction(momentaryBtn, p, { b: false });
+  assert.deepEqual(resDown, { variableId: "b", value: true });
+
+  const momentaryBtnUp = {
+    ...momentaryBtn,
+    actionValue: "false",
+  };
+  const resUp = evaluateAction(momentaryBtnUp, p, { b: true });
+  assert.deepEqual(resUp, { variableId: "b", value: false });
+
+  // Previous screen button action evaluation
+  const prevBtn = {
+    ...makeElement("button"),
+    action: "previousScreen",
+  };
+  assert.equal(bindingProblems(prevBtn, p).length, 0);
+  assert.deepEqual(evaluateAction(prevBtn, p, {}), { actionType: "previousScreen" });
+});

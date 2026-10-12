@@ -1,7 +1,11 @@
 import type { Element, Project, Screen } from "../model.ts";
 
 export function isPopup(screen: Screen): boolean {
-  return screen.type === "popup";
+  return screen.type === "popup" || screen.type === "dialog";
+}
+
+export function parentScreenId(screen: Screen): string | undefined {
+  return screen.parentScreenId ?? screen.inheritsScreenId;
 }
 
 // Resolve references at render time: inherited elements never become child data.
@@ -19,8 +23,8 @@ export function screenElements(
   while (screen && !visited.has(screen.id)) {
     visited.add(screen.id);
     chain.push(screen);
-    screen = screen.parentScreenId
-      ? screens.get(screen.parentScreenId)
+    screen = parentScreenId(screen)
+      ? screens.get(parentScreenId(screen)!)
       : undefined;
   }
   return chain
@@ -44,7 +48,7 @@ export function canInherit(
     seen.add(id);
     const screen = screens.get(id);
     if (!screen) return false;
-    id = screen.parentScreenId;
+    id = parentScreenId(screen);
   }
   return true;
 }
@@ -54,26 +58,39 @@ export function screenProblems(project: Project): string[] {
   const start = project.screens.find((s) => s.id === project.startScreenId);
   if (!start || isPopup(start)) errors.push("起始畫面必須是有效的一般畫面");
   for (const s of project.screens) {
-    if (s.type !== undefined && !["normal", "popup"].includes(s.type))
+    for (const id of [s.parentScreenId, s.inheritsScreenId]) {
+      if (id !== undefined && (typeof id !== "string" || !id.length))
+        errors.push(`${s.name}：繼承畫面格式錯誤`);
+    }
+    if (
+      s.type !== undefined &&
+      !["normal", "popup", "screen", "dialog"].includes(s.type)
+    )
       errors.push(`${s.name}：無效的畫面類別`);
     if (
-      s.parentScreenId !== undefined &&
-      (typeof s.parentScreenId !== "string" ||
-        !canInherit(project, s.id, s.parentScreenId))
+      parentScreenId(s) !== undefined &&
+      (typeof parentScreenId(s) !== "string" ||
+        !canInherit(project, s.id, parentScreenId(s)!))
     )
       errors.push(`${s.name}：繼承畫面不存在或形成循環`);
+    if (
+      s.parentScreenId !== undefined &&
+      s.inheritsScreenId !== undefined &&
+      s.parentScreenId !== s.inheritsScreenId
+    )
+      errors.push(`${s.name}：繼承畫面設定不一致`);
   }
   return errors;
 }
 
 export function screenReferences(project: Project, id: string): string[] {
   return project.screens.flatMap((s) => [
-    ...(s.parentScreenId === id ? [`${s.name}（繼承）`] : []),
+    ...(parentScreenId(s) === id ? [`${s.name}（繼承）`] : []),
     ...s.elements
       .filter(
         (e) =>
           e.kind === "button" &&
-          ["screen", "popup"].includes(e.action) &&
+          ["screen", "popup", "openDialog"].includes(e.action) &&
           e.targetScreenId === id,
       )
       .map((e) => `${s.name} / ${e.name}`),

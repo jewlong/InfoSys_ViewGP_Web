@@ -52,7 +52,7 @@ p.screens = [
         width: 130,
       }),
     ],
-    { type: "popup", width: 360, height: 240, parentScreenId: "master" },
+    { type: "dialog", width: 360, height: 240, inheritsScreenId: "master" },
   ),
   screen(
     "confirm",
@@ -64,7 +64,7 @@ p.screens = [
         variableId: "count",
       }),
       element("button", "Open Nested", 190, 160, {
-        action: "popup",
+        action: "openDialog",
         targetScreenId: "nested",
         width: 150,
       }),
@@ -74,8 +74,8 @@ p.screens = [
   screen(
     "nested",
     "Nested",
-    [element("button", "Nested close", 20, 60, { action: "closePopup" })],
-    { type: "popup", width: 240, height: 140 },
+    [element("button", "Nested close", 20, 60, { action: "closeDialog" })],
+    { type: "dialog", width: 240, height: 140 },
   ),
 ];
 

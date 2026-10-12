@@ -136,6 +136,32 @@ test("popup stack rejects duplicate/reentrant dialogs and caps nesting", () => {
   );
 });
 
+test("existing dialog and inheritance field names remain compatible", () => {
+  const p = fixture();
+  p.screens[0].type = "screen";
+  p.screens[1].inheritsScreenId = p.screens[1].parentScreenId;
+  delete p.screens[1].parentScreenId;
+  p.screens[2].type = "dialog";
+  assert.ok(validateProject(p));
+  assert.equal(screenElements(p, "popup").length, 2);
+  const button = {
+    ...makeElement("button"),
+    action: "openDialog",
+    targetScreenId: "popup",
+  };
+  assert.deepEqual(evaluateAction(button, p, {}), {
+    actionType: "openDialog",
+    dialogId: "popup",
+  });
+  assert.deepEqual(
+    evaluateAction({ ...button, action: "closeDialog" }, p, {}),
+    { actionType: "closeDialog" },
+  );
+  assert.deepEqual(openPopup(p, [], "popup"), ["popup"]);
+  p.screens[1].parentScreenId = "popup";
+  assert.equal(validateProject(p), false);
+});
+
 test("project diagnostics include inherited geometry in the child's dimensions", () => {
   const p = fixture();
   p.screens[2].width = 100;

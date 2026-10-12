@@ -45,6 +45,7 @@ export function CanvasEditor() {
     addElement,
     newScreen,
     action,
+    momentaryAction,
     input,
     trendData,
     alarmEvents,
@@ -241,6 +242,9 @@ export function CanvasEditor() {
                       )}
                       onAction={() => action(e, screen.id)}
                       onInput={(val) => input(e, val, screen.id)}
+                      onMomentary={(down) =>
+                        momentaryAction(e, down, screen.id)
+                      }
                       samples={trendData[e.id]}
                       alarmEvents={alarmEvents.filter(
                         (event) => event.elementId === e.id,

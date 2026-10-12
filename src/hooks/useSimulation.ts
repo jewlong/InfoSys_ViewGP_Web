@@ -1,9 +1,16 @@
 import { useRuntimeData } from "./useRuntimeData";
 import { evaluateAction, inputError, parseNumber } from "../services/dataRules";
-import { useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { Element, Project } from "../model";
 import { initialValues } from "../utils/project";
 import { openPopup, screenElements } from "../services/screenRules";
+import { computeSystemValues } from "../services/systemVariables";
 type Options = {
   project: Project;
   screenId: string;
@@ -21,7 +28,19 @@ export function useSimulation({
   const [mode, updateMode] = useState<"edit" | "preview" | "run">("edit");
   const [popupIds, updatePopupIds] = useState<string[]>([]);
   const popupRef = useRef<string[]>([]);
+  const [screenHistory, setScreenHistory] = useState<string[]>([]);
+  const pressed = useRef(new Map<string, string>());
+  function releaseMomentary() {
+    const ids = [...pressed.current.values()];
+    pressed.current.clear();
+    if (ids.length)
+      setValues((old) => ({
+        ...old,
+        ...Object.fromEntries(ids.map((id) => [id, false])),
+      }));
+  }
   function setPopups(ids: string[]) {
+    releaseMomentary();
     popupRef.current = ids;
     updatePopupIds(ids);
   }
@@ -57,9 +76,31 @@ export function useSimulation({
   );
   const [epoch, setEpoch] = useState(0);
   const runtimeData = useRuntimeData(project, values, running, epoch);
+  useEffect(() => {
+    if (!running) return;
+    const update = () =>
+      setValues((old) => ({
+        ...old,
+        ...computeSystemValues(
+          project,
+          screenId,
+          runtimeData.alarmEvents.filter(
+            (event) => event.clearedAt === undefined,
+          ).length,
+        ),
+      }));
+    update();
+    const timer = window.setInterval(update, 250);
+    return () => window.clearInterval(timer);
+  }, [running, project, screenId, runtimeData.alarmEvents]);
+  useEffect(() => {
+    window.addEventListener("blur", releaseMomentary);
+    return () => window.removeEventListener("blur", releaseMomentary);
+  }, []);
   function resetSimulation() {
     setPopups([]);
-    setValues(initialValues(project));
+    setScreenHistory([]);
+    setValues(initialValues(project, screenId));
     setEpoch((value) => value + 1);
   }
   function action(e: Element, sourceScreenId: string) {
@@ -70,13 +111,44 @@ export function useSimulation({
       notify(result.error, true);
       return;
     }
+    if ("actionType" in result) {
+      if (result.actionType === "openDialog") showPopup(result.dialogId);
+      else if (result.actionType === "closeDialog") closePopup();
+      else if (screenHistory.length) {
+        setPopups([]);
+        setScreenId(screenHistory.at(-1)!);
+        setScreenHistory((old) => old.slice(0, -1));
+      } else notify("已無上一畫面記錄");
+      return;
+    }
     if ("popupId" in result) showPopup(result.popupId);
     else if ("closePopup" in result) closePopup();
     else if ("screenId" in result) {
       setPopups([]);
+      setScreenHistory((old) => [...old, screenId]);
       setScreenId(result.screenId);
     } else setValues((old) => ({ ...old, [result.variableId]: result.value }));
     setLogs((l) => [`${e.name} · 動作：${e.action}`, ...l].slice(0, 50));
+  }
+  function momentaryAction(e: Element, down: boolean, sourceScreenId: string) {
+    if (!down) {
+      const id = pressed.current.get(e.id);
+      if (id) {
+        pressed.current.delete(e.id);
+        setValues((old) => ({ ...old, [id]: false }));
+      }
+      return;
+    }
+    if (
+      !running ||
+      !canOperate(e, sourceScreenId) ||
+      (e.enabledId && !values[e.enabledId])
+    )
+      return;
+    const result = evaluateAction(e, project, values);
+    if (!("variableId" in result) || typeof result.value !== "boolean") return;
+    pressed.current.set(e.id, result.variableId);
+    setValues((old) => ({ ...old, [result.variableId]: true }));
   }
   function input(
     e: Element,
@@ -109,6 +181,9 @@ export function useSimulation({
     popupIds,
     showPopup,
     closePopup,
+    activeDialogId: popupIds.at(-1) ?? null,
+    closeActiveDialog: closePopup,
+    momentaryAction,
     ...runtimeData,
   };
 }

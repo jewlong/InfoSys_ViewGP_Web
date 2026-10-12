@@ -74,5 +74,9 @@ public sealed class ProjectStoreTests : IDisposable
         Assert.Null(store.Restore("project-1", 999, 3));
     }
 
-    public void Dispose() { if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true); }
+    public void Dispose()
+    {
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+    }
 }

@@ -11,6 +11,7 @@ export type WidgetProps = {
   alarmEvents?: AlarmEvent[];
   onAcknowledge?: (id: string) => void;
   onAction: () => void;
+  onMomentary?: (down: boolean) => void;
   onInput: (value: string) => string | undefined;
 };
 export const widgetStyle = (element: Element): CSSProperties => ({

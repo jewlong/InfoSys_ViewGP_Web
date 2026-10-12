@@ -1,5 +1,9 @@
 import { useEditorContext } from "../../context/EditorContext";
-import { canInherit, isPopup } from "../../services/screenRules";
+import {
+  canInherit,
+  isPopup,
+  parentScreenId,
+} from "../../services/screenRules";
 import { Field } from "../ui/Controls";
 
 export function ScreenStructureFields() {
@@ -9,7 +13,7 @@ export function ScreenStructureFields() {
     <>
       <Field label="畫面類別">
         <select
-          value={screen.type ?? "normal"}
+          value={isPopup(screen) ? "popup" : "normal"}
           onChange={(e) => setScreenType(e.target.value as "normal" | "popup")}
         >
           <option value="normal">一般畫面</option>
@@ -18,7 +22,7 @@ export function ScreenStructureFields() {
       </Field>
       <Field label="繼承畫面（共通母片）">
         <select
-          value={screen.parentScreenId ?? ""}
+          value={parentScreenId(screen) ?? ""}
           onChange={(e) => setParentScreen(e.target.value)}
         >
           <option value="">不繼承</option>

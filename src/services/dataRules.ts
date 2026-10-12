@@ -1,16 +1,28 @@
-import type { Element, Project, Variable } from "../model";
+import type { Element, Project, Variable } from "../model.ts";
 import { isPopup } from "./screenRules.ts";
-
-const screenActions = ["screen", "popup", "closePopup"];
+import { getSystemVariable, isSystemVariable } from "./systemVariables.ts";
 
 export function bindingTypes(e: Element): Variable["type"][] {
-  if (["number", "input", "gauge", "bar", "trend"].includes(e.kind))
+  if (
+    ["number", "input", "gauge", "bar", "trend", "multistate"].includes(e.kind)
+  )
     return ["number"];
   if (["indicator", "switch"].includes(e.kind)) return ["boolean"];
-  if (e.kind === "text") return ["number", "boolean", "string"];
+  if (["text", "datetime"].includes(e.kind))
+    return ["number", "boolean", "string"];
   if (e.kind === "button") {
-    if (screenActions.includes(e.action)) return [];
-    if (e.action === "toggle") return ["boolean"];
+    if (
+      [
+        "screen",
+        "previousScreen",
+        "openDialog",
+        "closeDialog",
+        "popup",
+        "closePopup",
+      ].includes(e.action)
+    )
+      return [];
+    if (["toggle", "momentary"].includes(e.action)) return ["boolean"];
     if (e.action === "increment") return ["number"];
     return ["number", "boolean", "string"];
   }
@@ -50,8 +62,22 @@ export function inputError(e: Element, raw: string): string | undefined {
 }
 export function bindingProblems(e: Element, project: Project): string[] {
   const errors: string[] = [];
-  const variable = project.variables.find((v) => v.id === e.variableId);
+  const isSys = isSystemVariable(e.variableId);
+  const sysVar = isSys ? getSystemVariable(e.variableId!) : undefined;
+  const variable = isSys
+    ? undefined
+    : project.variables.find((v) => v.id === e.variableId);
   const types = bindingTypes(e);
+  const isNavigationAction =
+    e.kind === "button" &&
+    [
+      "screen",
+      "previousScreen",
+      "openDialog",
+      "closeDialog",
+      "popup",
+      "closePopup",
+    ].includes(e.action);
   const required =
     [
       "number",
@@ -61,38 +87,53 @@ export function bindingProblems(e: Element, project: Project): string[] {
       "gauge",
       "bar",
       "trend",
+      "multistate",
     ].includes(e.kind) ||
-    (e.kind === "button" && !screenActions.includes(e.action));
-  if (
-    (required || e.variableId) &&
-    !(e.kind === "button" && screenActions.includes(e.action)) &&
-    !variable
-  )
-    errors.push("未綁定有效變數");
-  if (variable && types.length && !types.includes(variable.type))
-    errors.push(`綁定類型不符，需使用 ${types.join("／")} 變數`);
+    (e.kind === "button" && !isNavigationAction);
+
+  if ((required || e.variableId) && !isNavigationAction) {
+    if (isSys) {
+      if (!sysVar) errors.push("未綁定有效系統變數");
+      else if (types.length && !types.includes(sysVar.type))
+        errors.push(`綁定類型不符，需使用 ${types.join("／")} 變數`);
+      if (
+        e.kind === "button" &&
+        ["set", "increment", "toggle", "reset", "momentary"].includes(e.action)
+      )
+        errors.push("系統變數為唯讀，不可寫入");
+    } else {
+      if (!variable) errors.push("未綁定有效變數");
+      else if (types.length && !types.includes(variable.type))
+        errors.push(`綁定類型不符，需使用 ${types.join("／")} 變數`);
+    }
+  }
+
   for (const [id, name] of [
     [e.conditionId, "顯示"],
     [e.enabledId, "啟用"],
-  ] as const)
-    if (
-      id &&
-      !project.variables.some((v) => v.id === id && v.type === "boolean")
-    )
-      errors.push(`${name}條件需綁定有效布林變數`);
+  ] as const) {
+    if (id) {
+      const conditionSys = isSystemVariable(id)
+        ? getSystemVariable(id)
+        : undefined;
+      const conditionUser = project.variables.find((v) => v.id === id);
+      const isBool =
+        conditionSys?.type === "boolean" || conditionUser?.type === "boolean";
+      if (!isBool) errors.push(`${name}條件需綁定有效布林變數`);
+    }
+  }
+
   if (e.kind === "button") {
     if (
-      ["screen", "popup"].includes(e.action) &&
-      !project.screens.some(
-        (s) =>
-          s.id === e.targetScreenId && isPopup(s) === (e.action === "popup"),
-      )
+      e.action === "screen" &&
+      !project.screens.some((s) => s.id === e.targetScreenId && !isPopup(s))
     )
-      errors.push(
-        e.action === "popup"
-          ? "未選擇有效對話盒畫面"
-          : "未選擇有效目標畫面（一般畫面）",
-      );
+      errors.push("未選擇有效目標畫面");
+    if (
+      ["openDialog", "popup"].includes(e.action) &&
+      !project.screens.some((s) => s.id === e.targetScreenId && isPopup(s))
+    )
+      errors.push("未選擇有效目標對話盒");
     if (variable && ["set", "increment"].includes(e.action)) {
       if (
         variable.type === "number" &&
@@ -145,8 +186,20 @@ export function actionPatch(
     variables.find((v) => types.includes(v.type));
   return {
     action,
-    variableId: screenActions.includes(action) ? undefined : variable?.id,
-    ...(action !== e.action && screenActions.includes(action)
+    variableId: [
+      "screen",
+      "previousScreen",
+      "openDialog",
+      "closeDialog",
+      "popup",
+      "closePopup",
+    ].includes(action)
+      ? undefined
+      : variable?.id,
+    ...(action !== e.action &&
+    ["screen", "openDialog", "popup", "closeDialog", "closePopup"].includes(
+      action,
+    )
       ? { targetScreenId: undefined }
       : {}),
     ...(action === "set" && variable
@@ -156,6 +209,7 @@ export function actionPatch(
         : {}),
   };
 }
+
 export function evaluateAction(
   e: Element,
   project: Project,
@@ -165,11 +219,19 @@ export function evaluateAction(
   | { screenId: string }
   | { popupId: string }
   | { closePopup: true }
+  | { actionType: "previousScreen" | "closeDialog" }
+  | { actionType: "openDialog"; dialogId: string }
   | { variableId: string; value: number | boolean | string } {
   const errors = bindingProblems(e, project);
   if (errors.length) return { error: errors[0] };
   if (e.kind === "button" && e.action === "screen")
     return { screenId: e.targetScreenId! };
+  if (e.kind === "button" && e.action === "previousScreen")
+    return { actionType: "previousScreen" };
+  if (e.kind === "button" && e.action === "openDialog")
+    return { actionType: "openDialog", dialogId: e.targetScreenId! };
+  if (e.kind === "button" && e.action === "closeDialog")
+    return { actionType: "closeDialog" };
   if (e.kind === "button" && e.action === "popup")
     return { popupId: e.targetScreenId! };
   if (e.kind === "button" && e.action === "closePopup")
@@ -181,6 +243,9 @@ export function evaluateAction(
     if (variable.type !== "boolean" || typeof values[variable.id] !== "boolean")
       return { error: "切換需使用布林值" };
     value = !values[variable.id];
+  } else if (e.action === "momentary") {
+    if (variable.type !== "boolean") return { error: "點動需使用布林值" };
+    value = e.actionValue === "false" ? false : true;
   } else if (e.action === "reset") value = variable.initial;
   else if (e.action === "increment") {
     const previous = values[variable.id];

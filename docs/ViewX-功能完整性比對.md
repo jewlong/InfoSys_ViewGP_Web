@@ -1,6 +1,6 @@
 # ViewX 1.0 手冊與網頁版功能完整性比對
 
-核對日期：2026-10-12。對象：本工作區 `InfoSys_ViewGP_Web`（package 0.2.0、schemaVersion 1）。
+核對日期：2026-10-12。對象：`InfoSys_ViewGP_Web` 基準提交 `640907d`（package 0.2.0、schemaVersion 1）。這是新增核心元件、系統變數與 Popup／繼承之前的功能稽核快照；後續已實作功能請見 README。
 
 ## 範圍與判定方式
 

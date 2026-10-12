@@ -41,7 +41,10 @@ export function useEditorCore() {
     running,
     values,
     setValues,
+    activeDialogId,
+    closeActiveDialog,
     action,
+    momentaryAction,
     input,
     resetSimulation,
     trendData,
@@ -289,6 +292,9 @@ export function useEditorCore() {
     setScreenId(s.id);
     setSelected([]);
   }
+  function newDialog() {
+    newScreen(false, true);
+  }
   function deleteScreen() {
     const references = screenReferences(project, screen.id);
     if (references.length) {
@@ -320,13 +326,13 @@ export function useEditorCore() {
       notify("請先將其他一般畫面設為起始畫面", true);
       return;
     }
-    const action = type === "popup" ? "screen" : "popup";
+    const actions = type === "popup" ? ["screen"] : ["popup", "openDialog"];
     if (
       project.screens.some((s) =>
         s.elements.some(
           (e) =>
             e.kind === "button" &&
-            e.action === action &&
+            actions.includes(e.action) &&
             e.targetScreenId === screen.id,
         ),
       )
@@ -345,6 +351,7 @@ export function useEditorCore() {
     }
     editScreen((s) => {
       s.parentScreenId = id || undefined;
+      delete s.inheritsScreenId;
     });
     setSelected([]);
   }
@@ -563,11 +570,15 @@ export function useEditorCore() {
     copy,
     paste,
     newScreen,
+    newDialog,
     deleteScreen,
     check,
     start,
     action,
+    momentaryAction,
     input,
+    activeDialogId,
+    closeActiveDialog,
     resetSimulation,
     trendData,
     alarmEvents,

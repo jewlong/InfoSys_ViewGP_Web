@@ -15,6 +15,7 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
     trendData,
     alarmEvents,
     acknowledgeAlarm,
+    momentaryAction,
   } = useEditorContext();
   const ref = useRef<HTMLElement>(null);
   const [viewport, setViewport] = useState({
@@ -120,6 +121,7 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
                     running
                     disabled={Boolean(e.enabledId && !values[e.enabledId])}
                     onAction={() => action(e, screen.id)}
+                    onMomentary={(down) => momentaryAction(e, down, screen.id)}
                     onInput={(value) => input(e, value, screen.id)}
                     samples={trendData[e.id]}
                     alarmEvents={alarmEvents.filter(
