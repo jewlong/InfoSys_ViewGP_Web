@@ -2,8 +2,12 @@ import { advancedProblems } from "./advancedRules.ts";
 import { bindingProblems } from "./dataRules.ts";
 import type { Project } from "../model";
 import { screenElements, screenProblems } from "./screenRules.ts";
+import { globalAlarmProblems } from "./globalAlarms.ts";
 export function checkProject(project: Project) {
-  const problems: string[] = screenProblems(project);
+  const problems: string[] = [
+    ...screenProblems(project),
+    ...globalAlarmProblems(project),
+  ];
   project.screens.forEach((s) =>
     screenElements(project, s.id).forEach(({ element: e, ownerScreenId }) => {
       for (const problem of [

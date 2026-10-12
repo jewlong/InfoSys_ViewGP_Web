@@ -27,6 +27,7 @@ public static class ProjectValidator
         if (!Number(project, "schemaVersion", 1, 1) || !Text(project, "id") || !Text(project, "name") || !Text(project, "description") || !Text(project, "startScreenId") ||
             !Array(project, "screens", out var screens) || screens.GetArrayLength() == 0 || !Array(project, "variables", out var variables)) return false;
         if (Property(project, "autoSave", out var autoSave) && autoSave.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return false;
+        if (!AlarmSettingsValidator.IsValid(project)) return false;
         var assetIds = new HashSet<string>(StringComparer.Ordinal);
         if (Property(project, "assets", out var assets))
         {

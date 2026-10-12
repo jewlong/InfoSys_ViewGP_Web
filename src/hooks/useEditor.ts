@@ -19,6 +19,7 @@ import { useNotifications } from "./useNotifications";
 import { useProjectPersistence } from "./useProjectPersistence";
 import { useSelection } from "./useSelection";
 import { useSimulation } from "./useSimulation";
+import { useAlarmPersistence } from "./useAlarmPersistence";
 import { canInherit, isPopup, screenReferences } from "../services/screenRules";
 export function useEditorCore() {
   const historyState = useHistory(demoProject);
@@ -53,6 +54,8 @@ export function useEditorCore() {
     popupIds,
     showPopup,
     closePopup,
+    alarmSession,
+    alarmRuntimeProblems,
   } = useSimulation({
     project,
     screenId: screen.id,
@@ -126,6 +129,12 @@ export function useEditorCore() {
     exportProject,
     importProject,
   } = persistence;
+  const alarmPersistence = useAlarmPersistence(
+    project.id,
+    alarmSession,
+    alarmEvents,
+    revision > 0,
+  );
   const imageResources = useImageResources(project, change, running, notify);
   const screenCount = project.screens.length;
   function change(fn: (project: Project) => void) {
@@ -474,15 +483,19 @@ export function useEditorCore() {
     setDialog("variable");
   }
   function deleteVariable(id: string) {
-    const used = project.screens.some((s) =>
-      s.elements.some(
-        (e) =>
-          e.variableId === id ||
-          e.conditionId === id ||
-          e.enabledId === id ||
-          e.alarmRules?.some((rule) => rule.variableId === id),
-      ),
-    );
+    const used =
+      project.alarmAreas?.some(
+        (a) => a.variableId === id || a.maskVariableId === id,
+      ) ||
+      project.screens.some((s) =>
+        s.elements.some(
+          (e) =>
+            e.variableId === id ||
+            e.conditionId === id ||
+            e.enabledId === id ||
+            e.alarmRules?.some((rule) => rule.variableId === id),
+        ),
+      );
     if (used) {
       notify("此變數仍被元件引用，請先解除綁定", true);
       return;
@@ -490,6 +503,8 @@ export function useEditorCore() {
     change((p) => (p.variables = p.variables.filter((v) => v.id !== id)));
   }
   return {
+    ...alarmPersistence,
+    alarmRuntimeProblems,
     ...persistence,
     ...imageResources,
     project,

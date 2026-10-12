@@ -165,6 +165,30 @@ export function ElementAdvancedFields() {
       )}
       {e.kind === "alarm" && (
         <PropertySection title="警報規則">
+          <Field label="警報資料來源">
+            <select
+              value={e.alarmSource ?? "local"}
+              onChange={(event) =>
+                patch({
+                  alarmSource: event.target.value as "local" | "global" | "all",
+                })
+              }
+            >
+              <option value="local">此元件規則</option>
+              <option value="global">全域警報</option>
+              <option value="all">全部警報</option>
+            </select>
+          </Field>
+          <Field label="警報群組篩選">
+            <input
+              maxLength={200}
+              value={e.alarmGroup ?? ""}
+              placeholder="留白顯示所有群組"
+              onChange={(event) =>
+                patch({ alarmGroup: event.target.value || undefined })
+              }
+            />
+          </Field>
           <Field label="顯示筆數">
             <NumberField
               value={e.alarmMaxRows ?? 20}
@@ -322,7 +346,7 @@ export function ElementAdvancedFields() {
           </button>
           <p className="appearance-hint">
             最多 20
-            項規則。確認不會解除警報；條件恢復時自動解除。紀錄限於本次模擬。
+            項元件規則。確認不會解除警報；條件恢復時自動解除。已儲存專案的警報會寫入歷史。
           </p>
         </PropertySection>
       )}

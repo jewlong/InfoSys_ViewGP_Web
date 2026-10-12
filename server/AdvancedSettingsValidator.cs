@@ -9,6 +9,8 @@ public static class AdvancedSettingsValidator
     public static bool IsValid(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Object) return false;
+        if (element.TryGetProperty("alarmSource", out var source) && (source.ValueKind != JsonValueKind.String || source.GetString() is not ("local" or "global" or "all"))) return false;
+        if (element.TryGetProperty("alarmGroup", out var group) && (group.ValueKind != JsonValueKind.String || group.GetString()!.Length > 200)) return false;
         foreach (var name in new[] { "scaleMin", "scaleMax", "warningThreshold", "criticalThreshold" })
             if (element.TryGetProperty(name, out var value) && !Finite(value)) return false;
         foreach (var name in new[] { "fillColor", "trackColor" })

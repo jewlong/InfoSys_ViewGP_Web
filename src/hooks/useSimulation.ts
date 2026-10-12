@@ -98,6 +98,7 @@ export function useSimulation({
     return () => window.removeEventListener("blur", releaseMomentary);
   }, []);
   function resetSimulation() {
+    runtimeData.clearRuntimeData();
     setPopups([]);
     setScreenHistory([]);
     setValues(initialValues(project, screenId));

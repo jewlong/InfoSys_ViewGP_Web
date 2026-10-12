@@ -1,4 +1,5 @@
 import { VersionHistoryDialog } from "./VersionHistoryDialog";
+import { AlarmManagementDialog } from "./AlarmManagementDialog";
 import { ImageResourcesDialog } from "./ImageResourcesDialog";
 import { ElementPropertiesDialog } from "./ElementPropertiesDialog";
 import { AlertCircle, Check, ChevronRight, FolderOpen, X } from "lucide-react";
@@ -27,6 +28,7 @@ export function ProjectDialogs() {
     check,
   } = useEditorContext();
   if (dialog === "versions") return <VersionHistoryDialog />;
+  if (dialog === "alarms") return <AlarmManagementDialog />;
   if (dialog === "assets") return <ImageResourcesDialog />;
   if (dialog === "element") return <ElementPropertiesDialog />;
   return (

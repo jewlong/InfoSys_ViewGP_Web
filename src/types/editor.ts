@@ -1,6 +1,7 @@
 export type Dialog =
   | "versions"
   | "assets"
+  | "alarms"
   | "element"
   | "projects"
   | "project"

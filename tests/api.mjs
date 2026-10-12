@@ -163,6 +163,17 @@ try {
     p.screens[0].elements[0][property] = value;
     invalids.push(p);
   }
+  for (const [property, value] of [
+    ["alarmAreas", null],
+    ["alarmAreas", [{}]],
+    ["alarmTicker", null],
+    ["alarmTicker", { enabled: true, position: "left", intervalMs: 1000 }],
+    ["alarmTicker", { enabled: true, position: "top", intervalMs: 999 }],
+  ]) {
+    const invalid = structuredClone(project);
+    invalid[property] = value;
+    invalids.push(invalid);
+  }
   const duplicate = structuredClone(project);
   for (const [property, value] of [
     ["type", null],
@@ -290,7 +301,7 @@ try {
   assert.equal(await oversizedRequest(true), 413);
   const home = await fetch(base + "/");
   assert.equal(home.status, 200);
-  assert.ok((await home.text()).includes("ViewX Studio"));
+  assert.ok((await home.text()).includes("ViewGP"));
   const unknown = await fetch(base + "/api/not-found");
   assert.equal(
     unknown.headers.get("content-type").startsWith("application/json"),

@@ -85,6 +85,7 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
         disabled: running,
       },
       { label: "專案設定", fn: () => setDialog("project"), disabled: running },
+      { label: "全域警報管理與歷史", fn: () => setDialog("alarms") },
     ],
     編輯: [
       {
@@ -199,6 +200,7 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
       { label: "檢查引用", fn: () => setDialog("check") },
     ],
     執行: [
+      { label: "警報中心", fn: () => setDialog("alarms") },
       { label: "專案檢查", fn: () => setDialog("check") },
       { label: "預覽目前畫面", fn: () => start("preview") },
       { label: "執行完整專案", fn: () => start("run") },

@@ -85,7 +85,7 @@ export function AlarmWidget({
                 <td colSpan={5} className="alarm-empty">
                   {running
                     ? "目前沒有符合條件的警報"
-                    : `${e.alarmRules?.length ?? 0} 項規則 · 預覽後開始監看`}
+                    : `${e.alarmSource === "global" ? "全域警報" : e.alarmSource === "all" ? "全部警報" : `${e.alarmRules?.length ?? 0} 項規則`} · 預覽後開始監看`}
                 </td>
               </tr>
             )}

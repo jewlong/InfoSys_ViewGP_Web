@@ -55,8 +55,9 @@ export function advancedProblems(e: Element, project: Project): string[] {
       problems.push("警戒門檻不可大於危險門檻");
   }
   if (e.kind === "alarm") {
-    if (!e.alarmRules?.length) problems.push("請至少設定一項警報規則");
-    for (const rule of e.alarmRules ?? [])
+    if ((!e.alarmSource || e.alarmSource === "local") && !e.alarmRules?.length)
+      problems.push("請至少設定一項警報規則");
+    for (const rule of e.alarmSource === "global" ? [] : (e.alarmRules ?? []))
       for (const problem of alarmRuleProblems(rule, project))
         problems.push(`${rule.message || "未命名警報"}：${problem}`);
   }
@@ -106,7 +107,7 @@ export function updateAlarmEvents(
   const clearedIds = new Set<string>();
   for (const e of project.screens
     .flatMap((s) => s.elements)
-    .filter((e) => e.kind === "alarm")) {
+    .filter((e) => e.kind === "alarm" && e.alarmSource !== "global")) {
     for (const rule of e.alarmRules ?? []) {
       const existing = activeEvents.get(JSON.stringify([e.id, rule.id]));
       const active =
@@ -137,6 +138,9 @@ export function updateAlarmEvents(
     .slice(0, 1000);
   const retained = new Set(cleared.map((event) => event.id));
   return events.filter(
-    (event) => event.clearedAt === undefined || retained.has(event.id),
+    (event) =>
+      event.clearedAt === undefined ||
+      event.clearedAt === now ||
+      retained.has(event.id),
   );
 }

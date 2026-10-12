@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
 import { screenElements } from "../../services/screenRules";
+import { widgetAlarmEvents } from "../../services/globalAlarms";
 import { WidgetRenderer } from "../widgets/WidgetRenderer";
 import type { Screen } from "../../model";
 
@@ -124,9 +125,7 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
                     onMomentary={(down) => momentaryAction(e, down, screen.id)}
                     onInput={(value) => input(e, value, screen.id)}
                     samples={trendData[e.id]}
-                    alarmEvents={alarmEvents.filter(
-                      (event) => event.elementId === e.id,
-                    )}
+                    alarmEvents={widgetAlarmEvents(e, alarmEvents)}
                     onAcknowledge={acknowledgeAlarm}
                   />
                 </div>

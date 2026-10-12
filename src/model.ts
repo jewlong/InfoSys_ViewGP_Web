@@ -1,4 +1,5 @@
 import { screenProblems } from "./services/screenRules.ts";
+import { validateAlarmSettings } from "./services/globalAlarms.ts";
 
 export type Kind =
   | "text"
@@ -53,6 +54,28 @@ export type AlarmRule = {
   severity: "info" | "warning" | "critical";
   enabled?: boolean;
 };
+export type WordAlarmRule = {
+  id: string;
+  bit: number;
+  message: string;
+  severity: AlarmRule["severity"];
+  enabled?: boolean;
+};
+export type AlarmArea = {
+  id: string;
+  name: string;
+  variableId: string;
+  maskVariableId?: string;
+  group: string;
+  updateIntervalMs: number;
+  enabled: boolean;
+  rules: WordAlarmRule[];
+};
+export type AlarmTickerSettings = {
+  enabled: boolean;
+  position: "top" | "bottom";
+  intervalMs: number;
+};
 export type Element = {
   id: string;
   kind: Kind;
@@ -96,6 +119,8 @@ export type Element = {
   historyPoints?: number;
   alarmRules?: AlarmRule[];
   alarmMaxRows?: number;
+  alarmSource?: "local" | "global" | "all";
+  alarmGroup?: string;
   conditionId?: string;
   enabledId?: string;
   fontFamily?: string;
@@ -145,6 +170,8 @@ export type Screen = {
 };
 export type ImageAsset = { id: string; name: string; data: string };
 export type Project = {
+  alarmAreas?: AlarmArea[];
+  alarmTicker?: AlarmTickerSettings;
   assets?: ImageAsset[];
   autoSave?: boolean;
   schemaVersion: 1;
@@ -451,6 +478,7 @@ export function validateProject(value: unknown): value is Project {
   )
     return false;
   if (p.autoSave !== undefined && typeof p.autoSave !== "boolean") return false;
+  if (!validateAlarmSettings(p)) return false;
   const assetIds = new Set<string>();
   if (
     p.assets !== undefined &&
@@ -658,6 +686,16 @@ export function validateDataSettings(e: Element): boolean {
 }
 
 export function validateAdvancedSettings(e: Element): boolean {
+  if (
+    e.alarmSource !== undefined &&
+    !["local", "global", "all"].includes(e.alarmSource)
+  )
+    return false;
+  if (
+    e.alarmGroup !== undefined &&
+    (typeof e.alarmGroup !== "string" || e.alarmGroup.length > 200)
+  )
+    return false;
   for (const key of [
     "scaleMin",
     "scaleMax",

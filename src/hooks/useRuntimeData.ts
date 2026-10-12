@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { Project } from "../model";
 import { updateAlarmEvents } from "../services/advancedRules";
-import type { AlarmEvent, TrendPoint } from "../types/runtime";
+import type { AlarmEvent, AlarmSession, TrendPoint } from "../types/runtime";
+import {
+  updateGlobalAlarmEvents,
+  globalAlarmProblems,
+} from "../services/globalAlarms";
 
 export function useRuntimeData(
   project: Project,
@@ -11,11 +15,17 @@ export function useRuntimeData(
 ) {
   const [trendData, setTrendData] = useState<Record<string, TrendPoint[]>>({});
   const [alarmEvents, setAlarmEvents] = useState<AlarmEvent[]>([]);
+  const [alarmSession, setAlarmSession] = useState<AlarmSession>();
+  const lastChecks = useRef(new Map<string, number>());
   const valuesRef = useRef(values);
   valuesRef.current = values;
   useEffect(() => {
     setTrendData({});
     setAlarmEvents([]);
+    lastChecks.current.clear();
+    setAlarmSession(
+      running ? { id: crypto.randomUUID(), startedAt: Date.now() } : undefined,
+    );
     if (!running) return;
     const trends = project.screens
       .flatMap((s) => s.elements)
@@ -56,6 +66,22 @@ export function useRuntimeData(
         updateAlarmEvents(previous, project, values, Date.now()),
       );
   }, [project, values, running, epoch]);
+  useEffect(() => {
+    if (!running || !project.alarmAreas?.length) return;
+    const check = () =>
+      setAlarmEvents((previous) =>
+        updateGlobalAlarmEvents(
+          previous,
+          project.alarmAreas ?? [],
+          valuesRef.current,
+          Date.now(),
+          lastChecks.current,
+        ),
+      );
+    check();
+    const timer = window.setInterval(check, 100);
+    return () => window.clearInterval(timer);
+  }, [project, running, epoch]);
   function acknowledgeAlarm(id: string) {
     if (!running) return;
     setAlarmEvents((previous) =>
@@ -66,5 +92,17 @@ export function useRuntimeData(
       ),
     );
   }
-  return { trendData, alarmEvents, acknowledgeAlarm };
+  function clearRuntimeData() {
+    setTrendData({});
+    setAlarmEvents([]);
+    setAlarmSession(undefined);
+  }
+  return {
+    trendData,
+    alarmEvents,
+    acknowledgeAlarm,
+    alarmSession,
+    clearRuntimeData,
+    alarmRuntimeProblems: running ? globalAlarmProblems(project, values) : [],
+  };
 }

@@ -14,6 +14,8 @@ import { Tool } from "../ui/Controls";
 import { WidgetRenderer } from "../widgets/WidgetRenderer";
 import { screenElements } from "../../services/screenRules";
 import { RuntimePopups } from "./RuntimePopups";
+import { AlarmTicker } from "./AlarmTicker";
+import { widgetAlarmEvents } from "../../services/globalAlarms";
 export function CanvasEditor() {
   const {
     project,
@@ -61,6 +63,9 @@ export function CanvasEditor() {
     cancelMarquee,
     popupIds,
     notify,
+    alarmHistoryPending,
+    alarmHistoryError,
+    retryAlarmHistory,
   } = useEditorContext();
   return (
     <main className="editor">
@@ -93,6 +98,7 @@ export function CanvasEditor() {
           />
         </div>
       </div>
+      <AlarmTicker position="top" />
       <div className="workspace" ref={workspaceRef}>
         <div className="workspace-heading">
           <div>
@@ -246,9 +252,7 @@ export function CanvasEditor() {
                         momentaryAction(e, down, screen.id)
                       }
                       samples={trendData[e.id]}
-                      alarmEvents={alarmEvents.filter(
-                        (event) => event.elementId === e.id,
-                      )}
+                      alarmEvents={widgetAlarmEvents(e, alarmEvents)}
                       onAcknowledge={acknowledgeAlarm}
                     />
                     {!running && selected.includes(e.id) && (
@@ -284,6 +288,7 @@ export function CanvasEditor() {
           </div>
         </div>
       </div>
+      <AlarmTicker position="bottom" />
       {bottom && (
         <div className="log-panel">
           <div>
@@ -307,6 +312,22 @@ export function CanvasEditor() {
           {selected.length ? `已選取 ${selected.length} 個元件` : "未選取元件"}
         </span>
         <div className="status-right">
+          {(running || alarmHistoryPending > 0 || alarmHistoryError) && (
+            <span title={alarmHistoryError}>
+              {alarmHistoryError
+                ? "警報歷史：保存失敗"
+                : alarmHistoryPending
+                  ? "警報歷史：保存中"
+                  : revision
+                    ? "警報歷史：已同步"
+                    : "警報歷史：請先儲存專案"}
+            </span>
+          )}
+          {alarmHistoryError && (
+            <button onClick={() => void retryAlarmHistory()}>
+              重試警報歷史
+            </button>
+          )}
           <span>{snap ? "吸附：10 px" : "吸附：關閉"}</span>
           {project.autoSave && (
             <span title={autoSaveError}>
