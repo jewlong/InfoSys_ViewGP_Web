@@ -2,6 +2,15 @@
 
 Web 畫面規劃工具：**TypeScript + React 前端、C# + ASP.NET Core 後端、SQLite 儲存**。預設離線模擬，也可由 C# 後端透過 Modbus TCP／COM RTU 讀寫設備，無須舊 `.vxf` 或原有 HMI。
 
+## 操作手冊
+
+第一次使用可先讀 [圖文操作手冊 PDF](docs/ViewGP-操作手冊.pdf) 第 2 章，依「泵浦監控」範例完成匯入、保存、離線執行與 Popup 操作。手冊包含 12 個操作章節、3 個附錄與 22 張實際畫面。
+
+- [可編輯 Word](docs/ViewGP-操作手冊.docx)／[離線網頁版](docs/ViewGP-操作手冊.html)。
+- [泵浦監控教學專案](docs/manual/examples/泵浦監控教學.json)：使用「檔案 → 匯入專案…」載入。
+- [完整使用手冊套件](docs/ViewGP-使用手冊套件.zip)：一次取得各格式與教學專案。
+- [手冊資源與重新產生方式](docs/manual/README.md)。
+
 ## 必要工具
 
 - Node.js **24 以上**（前端工具與測試）。

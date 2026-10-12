@@ -1,0 +1,98 @@
+{
+  "baseline": "4d3fbf1",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "timezone": "Asia/Taipei",
+  "screenshots": [
+    {
+      "file": "01-workspace.png",
+      "caption": "工程工作台八個區域"
+    },
+    {
+      "file": "02-project.png",
+      "caption": "專案名稱、起始畫面與自動儲存"
+    },
+    {
+      "file": "03-variable.png",
+      "caption": "新增數值變數"
+    },
+    {
+      "file": "04-variables.png",
+      "caption": "專案變數清單"
+    },
+    {
+      "file": "05-number.png",
+      "caption": "數值顯示與資料綁定"
+    },
+    {
+      "file": "06-button.png",
+      "caption": "按鈕動作與變數綁定"
+    },
+    {
+      "file": "07-offline.png",
+      "caption": "離線模擬、數值與變數監看"
+    },
+    {
+      "file": "08-popup.png",
+      "caption": "Popup 輸入設定值"
+    },
+    {
+      "file": "09-trend.png",
+      "caption": "趨勢畫面與返回按鈕"
+    },
+    {
+      "file": "10-inheritance.png",
+      "caption": "子畫面指定共用頁首，圖層顯示繼承來源"
+    },
+    {
+      "file": "11-screen.png",
+      "caption": "畫面類別、尺寸與繼承設定"
+    },
+    {
+      "file": "12-alarm-settings.png",
+      "caption": "Word、遮罩、位元訊息及跑馬燈"
+    },
+    {
+      "file": "13-alarm-live.png",
+      "caption": "即時警報、確認與發生值"
+    },
+    {
+      "file": "14-alarm-history.png",
+      "caption": "查詢警報歷史與解除原因"
+    },
+    {
+      "file": "15-tcp.png",
+      "caption": "Modbus TCP 設備設定範例"
+    },
+    {
+      "file": "16-mapping.png",
+      "caption": "溫度標籤位址、倍率及讀寫權限"
+    },
+    {
+      "file": "17-rtu.png",
+      "caption": "Modbus RTU 串列埠設定"
+    },
+    {
+      "file": "18-connection.png",
+      "caption": "設備連線狀態及最後成功時間"
+    },
+    {
+      "file": "19-online.png",
+      "caption": "設備監看與唯讀即時值"
+    },
+    {
+      "file": "20-versions.png",
+      "caption": "版本選取與還原前預覽"
+    },
+    {
+      "file": "21-images.png",
+      "caption": "圖片資源與引用數"
+    },
+    {
+      "file": "22-check.png",
+      "caption": "專案檢查結果"
+    }
+  ]
+}
