@@ -7,7 +7,7 @@ export function AppHeader() {
       <div className="brand-logo">
         <img src={infosystemLogo} alt="Infosystem" />
       </div>
-      <div className="brand">ViewGP</div>
+      
       <span className="header-divider" />
       <div className="project-header">
         <span>{project.name}</span>
