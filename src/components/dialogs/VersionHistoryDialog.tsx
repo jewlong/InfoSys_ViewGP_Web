@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { screenElements } from "../../services/screenRules";
 import { useEditorContext } from "../../context/EditorContext";
 import * as api from "../../services/projectApi";
 import type { Project } from "../../model";
@@ -104,6 +105,7 @@ export function VersionHistoryDialog() {
               <label>
                 預覽畫面
                 <select
+                  aria-label="預覽畫面"
                   value={screenId}
                   onChange={(e) => setScreenId(e.target.value)}
                 >
@@ -133,7 +135,8 @@ export function VersionHistoryDialog() {
                       position: "relative",
                     }}
                   >
-                    {screen.elements
+                    {screenElements(preview.project, screen.id)
+                      .map(({ element }) => element)
                       .filter((e) => e.visible)
                       .map((e) => (
                         <div

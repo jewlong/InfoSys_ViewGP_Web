@@ -7,7 +7,7 @@ namespace ViewX.Server;
 public static class ProjectValidator
 {
     private static readonly HashSet<string> Kinds = ["text", "rectangle", "circle", "line", "image", "button", "indicator", "number", "input", "switch", "gauge", "bar", "trend", "alarm", "datetime", "multistate", "scale", "table"];
-    private static readonly HashSet<string> Actions = ["toggle", "set", "increment", "screen", "reset", "momentary", "previousScreen", "openDialog", "closeDialog"];
+    private static readonly HashSet<string> Actions = ["toggle", "set", "increment", "screen", "reset", "momentary", "previousScreen", "openDialog", "closeDialog", "popup", "closePopup"];
     private static readonly string[] RequiredElementStrings = ["name", "text", "color", "background", "actionValue"];
     private static readonly string[] OptionalElementStrings = ["variableId", "targetScreenId", "groupId", "conditionId", "enabledId", "image", "unit", "dateTimeFormat", "gridColor", "scaleOrientation"];
     private static bool Property(JsonElement element, string name, out JsonElement value)
@@ -57,7 +57,7 @@ public static class ProjectValidator
         {
             if (!Unique(screen, ids) || !Text(screen, "name") || !Number(screen, "width", 100, 4096) || !Number(screen, "height", 100, 4096) ||
                 !Text(screen, "background") || !Array(screen, "elements", out var elements) || elements.GetArrayLength() > 2000) return false;
-            if (Property(screen, "type", out var sType) && (sType.ValueKind != JsonValueKind.String || !new[] { "screen", "dialog" }.Contains(sType.GetString()))) return false;
+            if (Property(screen, "type", out var sType) && (sType.ValueKind != JsonValueKind.String || !new[] { "screen", "dialog", "normal", "popup" }.Contains(sType.GetString()))) return false;
             if (Property(screen, "inheritsScreenId", out var inheritId) && inheritId.ValueKind != JsonValueKind.String) return false;
             if (screen.GetProperty("id").GetString() == project.GetProperty("startScreenId").GetString()) startFound = true;
             foreach (var element in elements.EnumerateArray())
@@ -74,6 +74,28 @@ public static class ProjectValidator
                     !new[] { "png", "jpeg", "webp", "gif" }.Any(type => source.StartsWith($"data:image/{type};base64,", StringComparison.Ordinal))) return false;
             }
         }
-        return startFound;
+        return startFound && ValidScreenStructure(project, screens);
+    }
+
+    private static bool ValidScreenStructure(JsonElement project, JsonElement screens)
+    {
+        var byId = screens.EnumerateArray().ToDictionary(s => s.GetProperty("id").GetString()!, StringComparer.Ordinal);
+        foreach (var screen in screens.EnumerateArray())
+        {
+            if (Property(screen, "type", out var type) &&
+                (type.ValueKind != JsonValueKind.String || type.GetString() is not ("normal" or "popup" or "screen" or "dialog"))) return false;
+            if (screen.GetProperty("id").GetString() == project.GetProperty("startScreenId").GetString() &&
+                Property(screen, "type", out var startType) && startType.GetString() is ("popup" or "dialog")) return false;
+            if (Property(screen, "parentScreenId", out var canonical) && Property(screen, "inheritsScreenId", out var legacy) &&
+                (canonical.ValueKind != JsonValueKind.String || legacy.ValueKind != JsonValueKind.String || canonical.GetString() != legacy.GetString())) return false;
+            var visited = new HashSet<string>(StringComparer.Ordinal) { screen.GetProperty("id").GetString()! };
+            var current = screen;
+            while (Property(current, "parentScreenId", out var parent) || Property(current, "inheritsScreenId", out parent))
+            {
+                if (parent.ValueKind != JsonValueKind.String || parent.GetString() is not { Length: > 0 } id ||
+                    !visited.Add(id) || !byId.TryGetValue(id, out current)) return false;
+            }
+        }
+        return true;
     }
 }

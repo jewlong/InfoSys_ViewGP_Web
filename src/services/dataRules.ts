@@ -1,4 +1,5 @@
 import type { Element, Project, Variable } from "../model.ts";
+import { isPopup } from "./screenRules.ts";
 import { getSystemVariable, isSystemVariable } from "./systemVariables.ts";
 
 export function bindingTypes(e: Element): Variable["type"][] {
@@ -11,9 +12,14 @@ export function bindingTypes(e: Element): Variable["type"][] {
     return ["number", "boolean", "string"];
   if (e.kind === "button") {
     if (
-      ["screen", "previousScreen", "openDialog", "closeDialog"].includes(
-        e.action,
-      )
+      [
+        "screen",
+        "previousScreen",
+        "openDialog",
+        "closeDialog",
+        "popup",
+        "closePopup",
+      ].includes(e.action)
     )
       return [];
     if (["toggle", "momentary"].includes(e.action)) return ["boolean"];
@@ -64,9 +70,14 @@ export function bindingProblems(e: Element, project: Project): string[] {
   const types = bindingTypes(e);
   const isNavigationAction =
     e.kind === "button" &&
-    ["screen", "previousScreen", "openDialog", "closeDialog"].includes(
-      e.action,
-    );
+    [
+      "screen",
+      "previousScreen",
+      "openDialog",
+      "closeDialog",
+      "popup",
+      "closePopup",
+    ].includes(e.action);
   const required =
     [
       "number",
@@ -115,12 +126,12 @@ export function bindingProblems(e: Element, project: Project): string[] {
   if (e.kind === "button") {
     if (
       e.action === "screen" &&
-      !project.screens.some((s) => s.id === e.targetScreenId)
+      !project.screens.some((s) => s.id === e.targetScreenId && !isPopup(s))
     )
       errors.push("未選擇有效目標畫面");
     if (
-      e.action === "openDialog" &&
-      !project.screens.some((s) => s.id === e.targetScreenId)
+      ["openDialog", "popup"].includes(e.action) &&
+      !project.screens.some((s) => s.id === e.targetScreenId && isPopup(s))
     )
       errors.push("未選擇有效目標對話盒");
     if (variable && ["set", "increment"].includes(e.action)) {
@@ -180,11 +191,16 @@ export function actionPatch(
       "previousScreen",
       "openDialog",
       "closeDialog",
+      "popup",
+      "closePopup",
     ].includes(action)
       ? undefined
       : variable?.id,
-    ...(action === "screen" || action === "openDialog"
-      ? { targetScreenId: e.targetScreenId }
+    ...(action !== e.action &&
+    ["screen", "openDialog", "popup", "closeDialog", "closePopup"].includes(
+      action,
+    )
+      ? { targetScreenId: undefined }
       : {}),
     ...(action === "set" && variable
       ? { actionValue: String(variable.initial) }
@@ -201,6 +217,8 @@ export function evaluateAction(
 ):
   | { error: string }
   | { screenId: string }
+  | { popupId: string }
+  | { closePopup: true }
   | { actionType: "previousScreen" | "closeDialog" }
   | { actionType: "openDialog"; dialogId: string }
   | { variableId: string; value: number | boolean | string } {
@@ -214,6 +232,10 @@ export function evaluateAction(
     return { actionType: "openDialog", dialogId: e.targetScreenId! };
   if (e.kind === "button" && e.action === "closeDialog")
     return { actionType: "closeDialog" };
+  if (e.kind === "button" && e.action === "popup")
+    return { popupId: e.targetScreenId! };
+  if (e.kind === "button" && e.action === "closePopup")
+    return { closePopup: true };
   const variable = project.variables.find((v) => v.id === e.variableId);
   if (!variable) return { error: "元件未綁定有效變數" };
   let value: number | boolean | string;
@@ -240,4 +262,3 @@ export function evaluateAction(
     return { error: "動作結果超出有效數值範圍" };
   return { variableId: variable.id, value };
 }
-

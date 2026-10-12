@@ -1,3 +1,5 @@
+import { screenProblems } from "./services/screenRules.ts";
+
 export type Kind =
   | "text"
   | "rectangle"
@@ -26,7 +28,9 @@ export type Action =
   | "momentary"
   | "previousScreen"
   | "openDialog"
-  | "closeDialog";
+  | "closeDialog"
+  | "popup"
+  | "closePopup";
 export type MultistateItem = {
   value: number;
   label: string;
@@ -134,7 +138,8 @@ export type Screen = {
   width: number;
   height: number;
   background: string;
-  type?: "screen" | "dialog";
+  type?: "screen" | "dialog" | "normal" | "popup";
+  parentScreenId?: string;
   inheritsScreenId?: string;
   elements: Element[];
 };
@@ -501,7 +506,8 @@ export function validateProject(value: unknown): value is Project {
         s.height >= 100 &&
         s.height <= 4096 &&
         typeof s.background === "string" &&
-        (s.type === undefined || ["screen", "dialog"].includes(s.type)) &&
+        (s.type === undefined ||
+          ["screen", "dialog", "normal", "popup"].includes(s.type)) &&
         (s.inheritsScreenId === undefined ||
           typeof s.inheritsScreenId === "string") &&
         Array.isArray(s.elements) &&
@@ -561,12 +567,15 @@ export function validateProject(value: unknown): value is Project {
               "previousScreen",
               "openDialog",
               "closeDialog",
+              "popup",
+              "closePopup",
             ].includes(e.action) &&
             (!e.image ||
               (typeof e.image === "string" &&
                 /^data:image\/(png|jpeg|webp|gif);base64,/.test(e.image))),
         ),
-    )
+    ) &&
+    screenProblems(p).length === 0
   );
 }
 

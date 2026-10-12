@@ -1,4 +1,5 @@
 import type { Element, Project, Screen } from "../model.ts";
+import { parentScreenId } from "../services/screenRules.ts";
 import { computeSystemValues } from "../services/systemVariables.ts";
 export const clone = <T>(value: T): T => structuredClone(value);
 export const initialValues = (project: Project, currentScreenId?: string) => ({
@@ -12,14 +13,13 @@ export function resolveInheritedElements(
 ): Element[] {
   const visited = new Set<string>([screen.id]);
   const inherited: Element[] = [];
-  let currentId = screen.inheritsScreenId;
+  let currentId = parentScreenId(screen);
   while (currentId && !visited.has(currentId)) {
     visited.add(currentId);
     const master = screens.find((s) => s.id === currentId);
     if (!master) break;
     inherited.unshift(...master.elements);
-    currentId = master.inheritsScreenId;
+    currentId = parentScreenId(master);
   }
   return inherited;
 }
-

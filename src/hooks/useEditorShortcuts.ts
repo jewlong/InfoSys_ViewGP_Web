@@ -26,6 +26,7 @@ export function useEditorShortcuts(editor: EditorCore) {
         if (dialog) {
           if (!editor.saving) setDialog(null);
         } else if (menu) setMenu(null);
+        else if (running && editor.popupIds.length) editor.closePopup();
         else if (running) setMode("edit");
         else setSelected([]);
         return;

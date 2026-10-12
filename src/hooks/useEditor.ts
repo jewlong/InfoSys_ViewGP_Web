@@ -19,6 +19,7 @@ import { useNotifications } from "./useNotifications";
 import { useProjectPersistence } from "./useProjectPersistence";
 import { useSelection } from "./useSelection";
 import { useSimulation } from "./useSimulation";
+import { canInherit, isPopup, screenReferences } from "../services/screenRules";
 export function useEditorCore() {
   const historyState = useHistory(demoProject);
   const {
@@ -49,6 +50,9 @@ export function useEditorCore() {
     trendData,
     alarmEvents,
     acknowledgeAlarm,
+    popupIds,
+    showPopup,
+    closePopup,
   } = useSimulation({
     project,
     screenId: screen.id,
@@ -259,18 +263,20 @@ export function useEditorCore() {
     editScreen((s) => s.elements.push(...items));
     setSelected(items.map((e) => e.id));
   }
-  function newScreen(duplicate = false) {
+  function newScreen(duplicate = false, popup = false) {
     const s = duplicate
       ? clone(screen)
       : {
           id: uid(),
           name: `畫面 ${screenCount + 1}`,
-          width: 960,
-          height: 600,
+          width: popup ? 480 : 960,
+          height: popup ? 300 : 600,
+          type: popup ? ("popup" as const) : ("normal" as const),
           background: "#101c2e",
           elements: [],
         };
     s.id = uid();
+    if (popup && !duplicate) s.name = `對話盒 ${screenCount + 1}`;
     if (duplicate) {
       s.name += " 副本";
       const groups = new Map<string, string>();
@@ -287,20 +293,21 @@ export function useEditorCore() {
     setSelected([]);
   }
   function newDialog() {
-    const d: Screen = {
-      id: uid(),
-      name: `對話盒 ${screenCount + 1}`,
-      type: "dialog",
-      width: 480,
-      height: 320,
-      background: "#1e293b",
-      elements: [],
-    };
-    change((p) => p.screens.push(d));
-    setScreenId(d.id);
-    setSelected([]);
+    newScreen(false, true);
   }
   function deleteScreen() {
+    const references = screenReferences(project, screen.id);
+    if (references.length) {
+      notify(`此畫面仍被引用：${references.join("、")}`, true);
+      return;
+    }
+    if (
+      !isPopup(screen) &&
+      project.screens.filter((s) => !isPopup(s)).length === 1
+    ) {
+      notify("專案至少需要一個一般畫面", true);
+      return;
+    }
     if (screenCount === 1) {
       notify("專案至少需要一個畫面", true);
       return;
@@ -308,9 +315,44 @@ export function useEditorCore() {
     if (!window.confirm(`確定刪除「${screen.name}」？`)) return;
     change((p) => {
       p.screens = p.screens.filter((s) => s.id !== screen.id);
-      if (p.startScreenId === screen.id) p.startScreenId = p.screens[0].id;
+      if (p.startScreenId === screen.id)
+        p.startScreenId = p.screens.find((s) => !isPopup(s))!.id;
     });
     setScreenId("");
+    setSelected([]);
+  }
+  function setScreenType(type: "normal" | "popup") {
+    if (type === "popup" && screen.id === project.startScreenId) {
+      notify("請先將其他一般畫面設為起始畫面", true);
+      return;
+    }
+    const actions = type === "popup" ? ["screen"] : ["popup", "openDialog"];
+    if (
+      project.screens.some((s) =>
+        s.elements.some(
+          (e) =>
+            e.kind === "button" &&
+            actions.includes(e.action) &&
+            e.targetScreenId === screen.id,
+        ),
+      )
+    ) {
+      notify("請先解除指向此畫面的按鈕動作，再變更類別", true);
+      return;
+    }
+    editScreen((s) => {
+      s.type = type;
+    });
+  }
+  function setParentScreen(id: string) {
+    if (id && !canInherit(project, screen.id, id)) {
+      notify("繼承畫面不存在或形成循環", true);
+      return;
+    }
+    editScreen((s) => {
+      s.parentScreenId = id || undefined;
+      delete s.inheritsScreenId;
+    });
     setSelected([]);
   }
   function start(next: "preview" | "run") {
@@ -321,7 +363,8 @@ export function useEditorCore() {
       return;
     }
     resetSimulation();
-    if (next === "run") setScreenId(project.startScreenId);
+    if (next === "run" || isPopup(screen)) setScreenId(project.startScreenId);
+    if (next === "preview" && isPopup(screen)) showPopup(screen.id);
     setSelected([]);
     setMode(next);
     setMenu(null);
@@ -540,6 +583,11 @@ export function useEditorCore() {
     trendData,
     alarmEvents,
     acknowledgeAlarm,
+    popupIds,
+    showPopup,
+    closePopup,
+    setScreenType,
+    setParentScreen,
     align,
     order,
     extremeOrder,

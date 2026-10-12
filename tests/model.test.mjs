@@ -124,4 +124,3 @@ test("Priority 1 widgets (datetime, multistate, scale, table) round-trip and val
   q3.screens[0].elements.find((e) => e.kind === "multistate").multistateItems[0].color = "not-color";
   assert.equal(validateProject(q3), false);
 });
-

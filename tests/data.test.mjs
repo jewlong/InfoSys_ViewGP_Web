@@ -241,4 +241,3 @@ test("system variables binding, momentary action, and previous screen navigation
   assert.equal(bindingProblems(prevBtn, p).length, 0);
   assert.deepEqual(evaluateAction(prevBtn, p, {}), { actionType: "previousScreen" });
 });
-

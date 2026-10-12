@@ -1,5 +1,6 @@
 import type { EditorCore } from "../hooks/useEditor";
 import { labels, newProject, uid, type Kind } from "../model";
+import { isPopup } from "../services/screenRules";
 import type { MenuItems } from "../types/editor";
 export const editingMenus = ["編輯", "畫面", "元件", "排列", "變數"];
 export function createEditorMenus(editor: EditorCore): MenuItems {
@@ -142,11 +143,13 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
     ],
     畫面: [
       { label: "新增畫面", fn: () => newScreen() },
+      { label: "新增對話盒", fn: () => newScreen(false, true) },
       { label: "複製畫面", fn: () => newScreen(true) },
       { label: "重新命名 / 畫面設定", fn: () => setDialog("screen") },
       { label: "刪除畫面", fn: deleteScreen },
       {
         label: "設定為起始畫面",
+        disabled: isPopup(screen),
         fn: () => change((p) => (p.startScreenId = screen.id)),
       },
     ],

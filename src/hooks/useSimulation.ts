@@ -1,10 +1,16 @@
 import { useRuntimeData } from "./useRuntimeData";
 import { evaluateAction, inputError, parseNumber } from "../services/dataRules";
-import { computeSystemValues } from "../services/systemVariables";
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { Element, Project } from "../model";
 import { initialValues } from "../utils/project";
-
+import { openPopup, screenElements } from "../services/screenRules";
+import { computeSystemValues } from "../services/systemVariables";
 type Options = {
   project: Project;
   screenId: string;
@@ -12,7 +18,6 @@ type Options = {
   notify: (text: string, error?: boolean) => void;
   setLogs: Dispatch<SetStateAction<string[]>>;
 };
-
 export function useSimulation({
   project,
   screenId,
@@ -20,46 +25,86 @@ export function useSimulation({
   notify,
   setLogs,
 }: Options) {
-  const [mode, setMode] = useState<"edit" | "preview" | "run">("edit");
-  const running = mode !== "edit";
+  const [mode, updateMode] = useState<"edit" | "preview" | "run">("edit");
+  const [popupIds, updatePopupIds] = useState<string[]>([]);
+  const popupRef = useRef<string[]>([]);
   const [screenHistory, setScreenHistory] = useState<string[]>([]);
+  const pressed = useRef(new Map<string, string>());
+  function releaseMomentary() {
+    const ids = [...pressed.current.values()];
+    pressed.current.clear();
+    if (ids.length)
+      setValues((old) => ({
+        ...old,
+        ...Object.fromEntries(ids.map((id) => [id, false])),
+      }));
+  }
+  function setPopups(ids: string[]) {
+    releaseMomentary();
+    popupRef.current = ids;
+    updatePopupIds(ids);
+  }
+  function setMode(next: "edit" | "preview" | "run") {
+    if (next === "edit") setPopups([]);
+    updateMode(next);
+  }
+  function showPopup(id: string) {
+    const next = openPopup(project, popupRef.current, id);
+    if (!next) {
+      notify("對話盒不存在、已開啟或超過 16 層", true);
+      return;
+    }
+    setPopups(next);
+  }
+  function closePopup() {
+    setPopups(popupRef.current.slice(0, -1));
+  }
+  function canOperate(e: Element, sourceScreenId: string): boolean {
+    const activeId = popupRef.current.at(-1) ?? screenId;
+    return (
+      activeId === sourceScreenId &&
+      screenElements(project, activeId).some(
+        ({ element }) => element.id === e.id,
+      ) &&
+      e.visible &&
+      (!e.conditionId || Boolean(values[e.conditionId]))
+    );
+  }
+  const running = mode !== "edit";
   const [values, setValues] = useState<Record<string, unknown>>(() =>
-    initialValues(project, screenId),
+    initialValues(project),
   );
   const [epoch, setEpoch] = useState(0);
-  const [activeDialogId, setActiveDialogId] = useState<string | null>(null);
   const runtimeData = useRuntimeData(project, values, running, epoch);
-
   useEffect(() => {
     if (!running) return;
-    const updateSys = () => {
+    const update = () =>
       setValues((old) => ({
         ...old,
         ...computeSystemValues(
           project,
           screenId,
-          runtimeData.alarmEvents.filter((a) => !a.clearedAt).length,
+          runtimeData.alarmEvents.filter(
+            (event) => event.clearedAt === undefined,
+          ).length,
         ),
       }));
-    };
-    updateSys();
-    const timer = window.setInterval(updateSys, 250);
+    update();
+    const timer = window.setInterval(update, 250);
     return () => window.clearInterval(timer);
   }, [running, project, screenId, runtimeData.alarmEvents]);
-
+  useEffect(() => {
+    window.addEventListener("blur", releaseMomentary);
+    return () => window.removeEventListener("blur", releaseMomentary);
+  }, []);
   function resetSimulation() {
-    setValues(initialValues(project, screenId));
+    setPopups([]);
     setScreenHistory([]);
-    setActiveDialogId(null);
+    setValues(initialValues(project, screenId));
     setEpoch((value) => value + 1);
   }
-
-  function closeActiveDialog() {
-    setActiveDialogId(null);
-  }
-
-  function action(e: Element) {
-    if (!running) return;
+  function action(e: Element, sourceScreenId: string) {
+    if (!running || !canOperate(e, sourceScreenId)) return;
     if (e.enabledId && !values[e.enabledId]) return;
     const result = evaluateAction(e, project, values);
     if ("error" in result) {
@@ -67,45 +112,55 @@ export function useSimulation({
       return;
     }
     if ("actionType" in result) {
-      if (result.actionType === "previousScreen") {
-        if (screenHistory.length > 0) {
-          const prev = screenHistory[screenHistory.length - 1];
-          setScreenHistory((hist) => hist.slice(0, -1));
-          setScreenId(prev);
-          setActiveDialogId(null);
-          setLogs((l) => [`${e.name} · 回上一畫面`, ...l].slice(0, 50));
-        } else {
-          notify("已無上一畫面記錄", false);
-        }
-      } else if (result.actionType === "openDialog") {
-        setActiveDialogId(result.dialogId);
-        setLogs((l) => [`${e.name} · 開啟對話盒`, ...l].slice(0, 50));
-      } else if (result.actionType === "closeDialog") {
-        setActiveDialogId(null);
-        setLogs((l) => [`${e.name} · 關閉對話盒`, ...l].slice(0, 50));
+      if (result.actionType === "openDialog") showPopup(result.dialogId);
+      else if (result.actionType === "closeDialog") closePopup();
+      else if (screenHistory.length) {
+        setPopups([]);
+        setScreenId(screenHistory.at(-1)!);
+        setScreenHistory((old) => old.slice(0, -1));
+      } else notify("已無上一畫面記錄");
+      return;
+    }
+    if ("popupId" in result) showPopup(result.popupId);
+    else if ("closePopup" in result) closePopup();
+    else if ("screenId" in result) {
+      setPopups([]);
+      setScreenHistory((old) => [...old, screenId]);
+      setScreenId(result.screenId);
+    } else setValues((old) => ({ ...old, [result.variableId]: result.value }));
+    setLogs((l) => [`${e.name} · 動作：${e.action}`, ...l].slice(0, 50));
+  }
+  function momentaryAction(e: Element, down: boolean, sourceScreenId: string) {
+    if (!down) {
+      const id = pressed.current.get(e.id);
+      if (id) {
+        pressed.current.delete(e.id);
+        setValues((old) => ({ ...old, [id]: false }));
       }
       return;
     }
-    if ("screenId" in result) {
-      setScreenHistory((hist) => [...hist, screenId]);
-      setScreenId(result.screenId);
-      setActiveDialogId(null);
-    } else if ("variableId" in result) {
-      setValues((old) => ({ ...old, [result.variableId]: result.value }));
-    }
-    setLogs((l) => [`${e.name} · 動作：${e.action}`, ...l].slice(0, 50));
+    if (
+      !running ||
+      !canOperate(e, sourceScreenId) ||
+      (e.enabledId && !values[e.enabledId])
+    )
+      return;
+    const result = evaluateAction(e, project, values);
+    if (!("variableId" in result) || typeof result.value !== "boolean") return;
+    pressed.current.set(e.id, result.variableId);
+    setValues((old) => ({ ...old, [result.variableId]: true }));
   }
-
-  function momentaryAction(e: Element, down: boolean) {
-    if (!running) return;
-    if (e.enabledId && !values[e.enabledId]) return;
-    if (!e.variableId) return;
-    setValues((old) => ({ ...old, [e.variableId!]: down }));
-    setLogs((l) => [`${e.name} · 點動：${down ? "ON" : "OFF"}`, ...l].slice(0, 50));
-  }
-
-  function input(e: Element, raw: string): string | undefined {
-    if (!running || (e.enabledId && !values[e.enabledId])) return "元件未啟用";
+  function input(
+    e: Element,
+    raw: string,
+    sourceScreenId: string,
+  ): string | undefined {
+    if (
+      !running ||
+      !canOperate(e, sourceScreenId) ||
+      (e.enabledId && !values[e.enabledId])
+    )
+      return "元件未啟用";
     const variable = project.variables.find((v) => v.id === e.variableId);
     if (variable?.type !== "number") return "需綁定有效數值變數";
     const error = inputError(e, raw);
@@ -114,19 +169,21 @@ export function useSimulation({
     setLogs((old) => [`${e.name} · 輸入：${raw}`, ...old].slice(0, 50));
     return undefined;
   }
-
   return {
     mode,
     setMode,
     running,
     values,
     setValues,
-    activeDialogId,
-    closeActiveDialog,
     action,
-    momentaryAction,
     input,
     resetSimulation,
+    popupIds,
+    showPopup,
+    closePopup,
+    activeDialogId: popupIds.at(-1) ?? null,
+    closeActiveDialog: closePopup,
+    momentaryAction,
     ...runtimeData,
   };
 }

@@ -1,10 +1,11 @@
 import { advancedProblems } from "./advancedRules.ts";
 import { bindingProblems } from "./dataRules.ts";
 import type { Project } from "../model";
+import { screenElements, screenProblems } from "./screenRules.ts";
 export function checkProject(project: Project) {
-  const problems: string[] = [];
+  const problems: string[] = screenProblems(project);
   project.screens.forEach((s) =>
-    s.elements.forEach((e) => {
+    screenElements(project, s.id).forEach(({ element: e, ownerScreenId }) => {
       for (const problem of [
         ...bindingProblems(e, project),
         ...advancedProblems(e, project),
@@ -22,7 +23,9 @@ export function checkProject(project: Project) {
         e.x + e.width > s.width ||
         e.y + e.height > s.height
       )
-        problems.push(`${s.name} / ${e.name}：超出畫面範圍`);
+        problems.push(
+          `${s.name} / ${e.name}${ownerScreenId !== s.id ? "（繼承）" : ""}：超出畫面範圍`,
+        );
     }),
   );
   return problems;

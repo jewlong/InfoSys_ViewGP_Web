@@ -1,6 +1,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
 import type { Element } from "../../model";
+import { isPopup } from "../../services/screenRules";
 import {
   actionPatch,
   bindingPatch,
@@ -54,29 +55,49 @@ export function ElementDataFields() {
               <option value="reset">重設為初始值 (Reset)</option>
               <option value="screen">切換畫面 (Jump)</option>
               <option value="previousScreen">回上一畫面 (Return)</option>
+              <option value="popup">開啟對話盒</option>
+              <option value="closePopup">關閉對話盒</option>
+              {e.action === "openDialog" && (
+                <option value="openDialog">開啟對話盒</option>
+              )}
+              {e.action === "closeDialog" && (
+                <option value="closeDialog">關閉對話盒</option>
+              )}
             </select>
           </Field>
-          {e.kind === "button" && e.action === "screen" && (
-            <Field label="目標畫面">
-              <select
-                value={e.targetScreenId ?? ""}
-                onChange={(event) =>
-                  patch({ targetScreenId: event.target.value || undefined })
-                }
-              >
-                <option value="">請選擇</option>
-                {project.screens.map((s) => (
-                  <option value={s.id} key={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-                {e.targetScreenId &&
-                  !project.screens.some((s) => s.id === e.targetScreenId) && (
-                    <option value={e.targetScreenId}>失效的目標畫面</option>
-                  )}
-              </select>
-            </Field>
-          )}
+          {e.kind === "button" &&
+            ["screen", "popup", "openDialog"].includes(e.action) && (
+              <Field label="目標畫面">
+                <select
+                  value={e.targetScreenId ?? ""}
+                  onChange={(event) =>
+                    patch({ targetScreenId: event.target.value || undefined })
+                  }
+                >
+                  <option value="">請選擇</option>
+                  {project.screens
+                    .filter(
+                      (s) =>
+                        isPopup(s) ===
+                        ["popup", "openDialog"].includes(e.action),
+                    )
+                    .map((s) => (
+                      <option value={s.id} key={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  {e.targetScreenId &&
+                    !project.screens.some(
+                      (s) =>
+                        s.id === e.targetScreenId &&
+                        isPopup(s) ===
+                          ["popup", "openDialog"].includes(e.action),
+                    ) && (
+                      <option value={e.targetScreenId}>失效的目標畫面</option>
+                    )}
+                </select>
+              </Field>
+            )}
           {e.kind === "button" && ["set", "increment"].includes(e.action) && (
             <Field label={e.action === "increment" ? "增減量" : "設定值"}>
               {variable?.type === "boolean" && e.action === "set" ? (
@@ -255,9 +276,17 @@ export function ElementDataFields() {
                 <button
                   type="button"
                   title="刪除狀態"
-                  style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", padding: 0 }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#f87171",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
                   onClick={() => {
-                    const next = (e.multistateItems ?? []).filter((_, i) => i !== idx);
+                    const next = (e.multistateItems ?? []).filter(
+                      (_, i) => i !== idx,
+                    );
                     patch({ multistateItems: next });
                   }}
                 >
@@ -275,7 +304,12 @@ export function ElementDataFields() {
               patch({
                 multistateItems: [
                   ...currentItems,
-                  { value: nextVal, label: `狀態 ${nextVal}`, color: "#38bdf8", textColor: "#ffffff" },
+                  {
+                    value: nextVal,
+                    label: `狀態 ${nextVal}`,
+                    color: "#38bdf8",
+                    textColor: "#ffffff",
+                  },
                 ],
               });
             }}
@@ -293,7 +327,8 @@ export function ElementDataFields() {
               value={e.scaleOrientation ?? "horizontal"}
               onChange={(event) =>
                 patch({
-                  scaleOrientation: event.target.value as "horizontal" | "vertical",
+                  scaleOrientation: event.target.value as
+                    "horizontal" | "vertical",
                 })
               }
             >
@@ -310,7 +345,10 @@ export function ElementDataFields() {
                 value={e.scaleMajorTicks ?? 5}
                 onChange={(event) =>
                   patch({
-                    scaleMajorTicks: Math.max(2, Math.min(20, Number(event.target.value) || 5)),
+                    scaleMajorTicks: Math.max(
+                      2,
+                      Math.min(20, Number(event.target.value) || 5),
+                    ),
                   })
                 }
               />
@@ -323,7 +361,10 @@ export function ElementDataFields() {
                 value={e.scaleMinorTicks ?? 4}
                 onChange={(event) =>
                   patch({
-                    scaleMinorTicks: Math.max(0, Math.min(10, Number(event.target.value) || 0)),
+                    scaleMinorTicks: Math.max(
+                      0,
+                      Math.min(10, Number(event.target.value) || 0),
+                    ),
                   })
                 }
               />
@@ -353,7 +394,9 @@ export function ElementDataFields() {
             <input
               type="checkbox"
               checked={e.scaleShowAxis ?? true}
-              onChange={(event) => patch({ scaleShowAxis: event.target.checked })}
+              onChange={(event) =>
+                patch({ scaleShowAxis: event.target.checked })
+              }
             />
             顯示主基準線
           </label>
@@ -361,7 +404,9 @@ export function ElementDataFields() {
             <input
               type="checkbox"
               checked={e.scaleShowLabels ?? true}
-              onChange={(event) => patch({ scaleShowLabels: event.target.checked })}
+              onChange={(event) =>
+                patch({ scaleShowLabels: event.target.checked })
+              }
             />
             顯示刻度數值文字
           </label>
@@ -379,7 +424,10 @@ export function ElementDataFields() {
                 value={e.tableCols ?? 3}
                 onChange={(event) =>
                   patch({
-                    tableCols: Math.max(1, Math.min(20, Number(event.target.value) || 1)),
+                    tableCols: Math.max(
+                      1,
+                      Math.min(20, Number(event.target.value) || 1),
+                    ),
                   })
                 }
               />
@@ -392,7 +440,10 @@ export function ElementDataFields() {
                 value={e.tableRows ?? 4}
                 onChange={(event) =>
                   patch({
-                    tableRows: Math.max(1, Math.min(20, Number(event.target.value) || 1)),
+                    tableRows: Math.max(
+                      1,
+                      Math.min(20, Number(event.target.value) || 1),
+                    ),
                   })
                 }
               />
@@ -409,7 +460,9 @@ export function ElementDataFields() {
             <input
               type="checkbox"
               checked={e.tableDiagonal ?? false}
-              onChange={(event) => patch({ tableDiagonal: event.target.checked })}
+              onChange={(event) =>
+                patch({ tableDiagonal: event.target.checked })
+              }
             />
             左上首格顯示對角分隔斜線
           </label>

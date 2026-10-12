@@ -78,4 +78,3 @@ export const widgetRegistry: Record<Kind, WidgetDefinition> = {
   scale: define("scale", Ruler, ScaleWidget),
   table: define("table", TableIcon, TableWidget),
 };
-

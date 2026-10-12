@@ -18,6 +18,8 @@ import {
   PropertySection,
 } from "../ui/Controls";
 import { ElementProperties } from "./ElementProperties";
+import { ScreenStructureFields } from "./ScreenStructureFields";
+import { isPopup, screenElements } from "../../services/screenRules";
 export function PropertyPanel() {
   const {
     project,
@@ -32,6 +34,7 @@ export function PropertyPanel() {
     notify,
     change,
     editScreen,
+    setScreenId,
   } = useEditorContext();
   return (
     <aside className="right-panel">
@@ -107,6 +110,7 @@ export function PropertyPanel() {
             </span>
           </div>
           <PropertySection title="畫面設定">
+            <ScreenStructureFields />
             <Field label="畫面名稱">
               <input
                 value={screen.name}
@@ -141,6 +145,7 @@ export function PropertyPanel() {
             </Field>
             <button
               className="secondary-btn full"
+              disabled={isPopup(screen)}
               onClick={() => change((p) => (p.startScreenId = screen.id))}
             >
               <LayoutDashboard size={14} />
@@ -163,9 +168,33 @@ export function PropertyPanel() {
               <Layers size={15} />
               圖層
             </span>
-            <span className="muted">{screen.elements.length}</span>
+            <span className="muted">{screenElements(project, screen.id).length}</span>
           </div>
           <div className="layers-list">
+            {screenElements(project, screen.id)
+              .filter((item) => item.ownerScreenId !== screen.id)
+              .reverse()
+              .map(({ element, ownerScreenId }) => (
+                <div className="layer-row inherited-layer" key={element.id}>
+                  <button
+                    className="layer-name"
+                    title="到父畫面編輯"
+                    onClick={() => {
+                      setScreenId(ownerScreenId);
+                      setSelected([]);
+                    }}
+                  >
+                    <Lock size={13} />
+                    <span>
+                      {element.name} · 繼承自{" "}
+                      {
+                        project.screens.find((s) => s.id === ownerScreenId)
+                          ?.name
+                      }
+                    </span>
+                  </button>
+                </div>
+              ))}
             {[...screen.elements].reverse().map((e) => {
               const Icon = widgetRegistry[e.kind].icon;
               return (
