@@ -5,6 +5,8 @@ import { AlertCircle, Check, ChevronRight, FolderOpen, X } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
 import { type Variable } from "../../model";
 import { ColorField, Field, NumberField } from "../ui/Controls";
+import { ScreenStructureFields } from "../editor/ScreenStructureFields";
+import { isPopup } from "../../services/screenRules";
 export function ProjectDialogs() {
   const {
     project,
@@ -132,11 +134,13 @@ export function ProjectDialogs() {
                       change((p) => (p.startScreenId = e.target.value))
                     }
                   >
-                    {project.screens.map((s) => (
-                      <option value={s.id} key={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
+                    {project.screens
+                      .filter((s) => !isPopup(s))
+                      .map((s) => (
+                        <option value={s.id} key={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
                   </select>
                 </Field>
                 <p className="info-box">
@@ -146,6 +150,7 @@ export function ProjectDialogs() {
             )}
             {dialog === "screen" && (
               <>
+                <ScreenStructureFields />
                 <Field label="畫面名稱">
                   <input
                     value={screen.name}

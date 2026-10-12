@@ -57,4 +57,40 @@ public sealed class ProjectValidatorTests
         project["screens"]![0]!["elements"]![0]![name] = JsonNode.Parse(json);
         Assert.False(ProjectValidator.IsValid(JsonSerializer.SerializeToElement(project)));
     }
+
+    [Fact]
+    public void PopupInheritanceAndActionsRoundTrip()
+    {
+        var project = JsonNode.Parse(ValidProject)!;
+        var popup = project["screens"]![0]!.DeepClone();
+        popup["id"] = "popup";
+        popup["type"] = "popup";
+        popup["parentScreenId"] = "s";
+        popup["elements"] = new JsonArray();
+        project["screens"]!.AsArray().Add(popup);
+        var button = project["screens"]![0]!["elements"]![0]!;
+        button["kind"] = "button";
+        button["action"] = "popup";
+        button["targetScreenId"] = "popup";
+        Assert.True(ProjectValidator.IsValid(JsonSerializer.SerializeToElement(project)));
+        button["action"] = "closePopup";
+        Assert.True(ProjectValidator.IsValid(JsonSerializer.SerializeToElement(project)));
+        project["screens"]![0]!["parentScreenId"] = "popup";
+        Assert.False(ProjectValidator.IsValid(JsonSerializer.SerializeToElement(project)));
+    }
+
+    [Theory]
+    [InlineData("type", "null")]
+    [InlineData("type", "\"invalid\"")]
+    [InlineData("type", "\"popup\"")]
+    [InlineData("parentScreenId", "null")]
+    [InlineData("parentScreenId", "\"\"")]
+    [InlineData("parentScreenId", "\"missing\"")]
+    [InlineData("parentScreenId", "\"s\"")]
+    public void InvalidScreenStructureIsRejected(string name, string json)
+    {
+        var project = JsonNode.Parse(ValidProject)!;
+        project["screens"]![0]![name] = JsonNode.Parse(json);
+        Assert.False(ProjectValidator.IsValid(JsonSerializer.SerializeToElement(project)));
+    }
 }

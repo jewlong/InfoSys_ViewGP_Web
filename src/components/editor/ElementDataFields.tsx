@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
 import type { Element } from "../../model";
+import { isPopup } from "../../services/screenRules";
 import {
   actionPatch,
   bindingPatch,
@@ -45,9 +46,11 @@ export function ElementDataFields() {
               <option value="increment">加減數值</option>
               <option value="reset">重設為初始值</option>
               <option value="screen">切換畫面</option>
+              <option value="popup">開啟對話盒</option>
+              <option value="closePopup">關閉對話盒</option>
             </select>
           </Field>
-          {e.kind === "button" && e.action === "screen" && (
+          {e.kind === "button" && ["screen", "popup"].includes(e.action) && (
             <Field label="目標畫面">
               <select
                 value={e.targetScreenId ?? ""}
@@ -56,15 +59,19 @@ export function ElementDataFields() {
                 }
               >
                 <option value="">請選擇</option>
-                {project.screens.map((s) => (
-                  <option value={s.id} key={s.id}>
-                    {s.name}
-                  </option>
-                ))}
+                {project.screens
+                  .filter((s) => isPopup(s) === (e.action === "popup"))
+                  .map((s) => (
+                    <option value={s.id} key={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
                 {e.targetScreenId &&
-                  !project.screens.some((s) => s.id === e.targetScreenId) && (
-                    <option value={e.targetScreenId}>失效的目標畫面</option>
-                  )}
+                  !project.screens.some(
+                    (s) =>
+                      s.id === e.targetScreenId &&
+                      isPopup(s) === (e.action === "popup"),
+                  ) && <option value={e.targetScreenId}>失效的目標畫面</option>}
               </select>
             </Field>
           )}

@@ -1,3 +1,5 @@
+import { screenProblems } from "./services/screenRules.ts";
+
 export type Kind =
   | "text"
   | "rectangle"
@@ -42,7 +44,14 @@ export type Element = {
   background: string;
   fontSize: number;
   variableId?: string;
-  action: "toggle" | "set" | "increment" | "screen" | "reset";
+  action:
+    | "toggle"
+    | "set"
+    | "increment"
+    | "screen"
+    | "reset"
+    | "popup"
+    | "closePopup";
   actionValue: string;
   targetScreenId?: string;
   locked: boolean;
@@ -98,6 +107,8 @@ export type Element = {
   buttonDisabledColor?: string;
 };
 export type Screen = {
+  type?: "normal" | "popup";
+  parentScreenId?: string;
   id: string;
   name: string;
   width: number;
@@ -457,14 +468,21 @@ export function validateProject(value: unknown): value is Project {
                 e.decimals <= 6)) &&
             typeof e.locked === "boolean" &&
             typeof e.visible === "boolean" &&
-            ["toggle", "set", "increment", "screen", "reset"].includes(
-              e.action,
-            ) &&
+            [
+              "toggle",
+              "set",
+              "increment",
+              "screen",
+              "reset",
+              "popup",
+              "closePopup",
+            ].includes(e.action) &&
             (!e.image ||
               (typeof e.image === "string" &&
                 /^data:image\/(png|jpeg|webp|gif);base64,/.test(e.image))),
         ),
-    )
+    ) &&
+    screenProblems(p).length === 0
   );
 }
 

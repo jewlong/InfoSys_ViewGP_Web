@@ -1749,3 +1749,45 @@ kbd {
     max-height: 160px;
   }
 }
+.runtime-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #020617aa;
+}
+.runtime-popup {
+  color: #e2e8f0;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #18263b;
+  box-shadow: 0 20px 60px #0008;
+}
+.runtime-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  padding: 4px 12px;
+  gap: 16px;
+}
+.runtime-popup-header > span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.runtime-popup-header > button {
+  flex-shrink: 0;
+}
+.runtime-popup-canvas {
+  position: relative;
+  overflow: hidden;
+  transform-origin: top left;
+}
+.inherited-layer {
+  opacity: 0.65;
+}

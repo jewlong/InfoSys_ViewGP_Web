@@ -1,4 +1,7 @@
 import type { Element, Project, Variable } from "../model";
+import { isPopup } from "./screenRules.ts";
+
+const screenActions = ["screen", "popup", "closePopup"];
 
 export function bindingTypes(e: Element): Variable["type"][] {
   if (["number", "input", "gauge", "bar", "trend"].includes(e.kind))
@@ -6,7 +9,7 @@ export function bindingTypes(e: Element): Variable["type"][] {
   if (["indicator", "switch"].includes(e.kind)) return ["boolean"];
   if (e.kind === "text") return ["number", "boolean", "string"];
   if (e.kind === "button") {
-    if (e.action === "screen") return [];
+    if (screenActions.includes(e.action)) return [];
     if (e.action === "toggle") return ["boolean"];
     if (e.action === "increment") return ["number"];
     return ["number", "boolean", "string"];
@@ -59,10 +62,10 @@ export function bindingProblems(e: Element, project: Project): string[] {
       "bar",
       "trend",
     ].includes(e.kind) ||
-    (e.kind === "button" && e.action !== "screen");
+    (e.kind === "button" && !screenActions.includes(e.action));
   if (
     (required || e.variableId) &&
-    !(e.kind === "button" && e.action === "screen") &&
+    !(e.kind === "button" && screenActions.includes(e.action)) &&
     !variable
   )
     errors.push("未綁定有效變數");
@@ -79,10 +82,17 @@ export function bindingProblems(e: Element, project: Project): string[] {
       errors.push(`${name}條件需綁定有效布林變數`);
   if (e.kind === "button") {
     if (
-      e.action === "screen" &&
-      !project.screens.some((s) => s.id === e.targetScreenId)
+      ["screen", "popup"].includes(e.action) &&
+      !project.screens.some(
+        (s) =>
+          s.id === e.targetScreenId && isPopup(s) === (e.action === "popup"),
+      )
     )
-      errors.push("未選擇有效目標畫面");
+      errors.push(
+        e.action === "popup"
+          ? "未選擇有效對話盒畫面"
+          : "未選擇有效目標畫面（一般畫面）",
+      );
     if (variable && ["set", "increment"].includes(e.action)) {
       if (
         variable.type === "number" &&
@@ -135,7 +145,10 @@ export function actionPatch(
     variables.find((v) => types.includes(v.type));
   return {
     action,
-    variableId: action === "screen" ? undefined : variable?.id,
+    variableId: screenActions.includes(action) ? undefined : variable?.id,
+    ...(action !== e.action && screenActions.includes(action)
+      ? { targetScreenId: undefined }
+      : {}),
     ...(action === "set" && variable
       ? { actionValue: String(variable.initial) }
       : action === "increment" && parseNumber(e.actionValue) === undefined
@@ -150,11 +163,17 @@ export function evaluateAction(
 ):
   | { error: string }
   | { screenId: string }
+  | { popupId: string }
+  | { closePopup: true }
   | { variableId: string; value: number | boolean | string } {
   const errors = bindingProblems(e, project);
   if (errors.length) return { error: errors[0] };
   if (e.kind === "button" && e.action === "screen")
     return { screenId: e.targetScreenId! };
+  if (e.kind === "button" && e.action === "popup")
+    return { popupId: e.targetScreenId! };
+  if (e.kind === "button" && e.action === "closePopup")
+    return { closePopup: true };
   const variable = project.variables.find((v) => v.id === e.variableId);
   if (!variable) return { error: "元件未綁定有效變數" };
   let value: number | boolean | string;

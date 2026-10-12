@@ -12,6 +12,8 @@ import { labels, type Kind } from "../../model";
 import { initialValues } from "../../utils/project";
 import { Tool } from "../ui/Controls";
 import { WidgetRenderer } from "../widgets/WidgetRenderer";
+import { screenElements } from "../../services/screenRules";
+import { RuntimePopups } from "./RuntimePopups";
 export function CanvasEditor() {
   const {
     project,
@@ -56,6 +58,8 @@ export function CanvasEditor() {
     moveMarquee,
     endMarquee,
     cancelMarquee,
+    popupIds,
+    notify,
   } = useEditorContext();
   return (
     <main className="editor">
@@ -114,6 +118,7 @@ export function CanvasEditor() {
           >
             <div
               ref={canvasRef}
+              inert={running && popupIds.length > 0}
               className={
                 "design-canvas " + (grid && !running ? "show-grid" : "")
               }
@@ -155,15 +160,21 @@ export function CanvasEditor() {
                 );
               }}
             >
-              {screen.elements
+              {screenElements(project, screen.id)
                 .filter(
-                  (e) =>
+                  ({ element: e }) =>
                     e.visible &&
                     (!running || !e.conditionId || values[e.conditionId]),
                 )
-                .map((e) => (
+                .map(({ element: e, ownerScreenId }) => (
                   <div
                     key={e.id}
+                    data-inherited={ownerScreenId !== screen.id || undefined}
+                    title={
+                      !running && ownerScreenId !== screen.id
+                        ? "繼承元件，請到父畫面編輯"
+                        : undefined
+                    }
                     className={
                       "canvas-element " +
                       (!running && selected.includes(e.id)
@@ -178,7 +189,7 @@ export function CanvasEditor() {
                       height: e.height,
                       cursor: running
                         ? "default"
-                        : e.locked
+                        : e.locked || ownerScreenId !== screen.id
                           ? "not-allowed"
                           : "move",
                       pointerEvents:
@@ -200,10 +211,22 @@ export function CanvasEditor() {
                       if (running) return;
                       ev.preventDefault();
                       ev.stopPropagation();
+                      if (ownerScreenId !== screen.id) {
+                        setSelected([]);
+                        notify("繼承元件請到父畫面編輯");
+                        return;
+                      }
                       setSelected([e.id]);
                       setDialog("element");
                     }}
-                    onPointerDown={(ev) => down(ev, e)}
+                    onPointerDown={(ev) => {
+                      if (!running && ownerScreenId !== screen.id) {
+                        ev.stopPropagation();
+                        setSelected([]);
+                        return;
+                      }
+                      down(ev, e);
+                    }}
                     onPointerMove={move}
                     onPointerUp={endDrag}
                     onPointerCancel={endDrag}
@@ -216,8 +239,8 @@ export function CanvasEditor() {
                       disabled={Boolean(
                         running && e.enabledId && !values[e.enabledId],
                       )}
-                      onAction={() => action(e)}
-                      onInput={(val) => input(e, val)}
+                      onAction={() => action(e, screen.id)}
+                      onInput={(val) => input(e, val, screen.id)}
                       samples={trendData[e.id]}
                       alarmEvents={alarmEvents.filter(
                         (event) => event.elementId === e.id,
@@ -253,7 +276,7 @@ export function CanvasEditor() {
                 ? "瀏覽器模擬執行 · 不連接實際設備"
                 : "畫布內容即為執行畫面"}
             </span>
-            <span>{screen.elements.length} 個元件</span>
+            <span>{screenElements(project, screen.id).length} 個元件</span>
           </div>
         </div>
       </div>
@@ -299,6 +322,7 @@ export function CanvasEditor() {
           <span>{Math.round(zoom * 100)}%</span>
         </div>
       </footer>
+      <RuntimePopups />
     </main>
   );
 }

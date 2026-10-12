@@ -11,6 +11,7 @@ import { useEditorContext } from "../../context/EditorContext";
 import { labels, type Kind } from "../../model";
 import { widgetRegistry } from "../../registry/widgetRegistry";
 import { clone } from "../../utils/project";
+import { isPopup } from "../../services/screenRules";
 export function LeftPanel() {
   const {
     project,
@@ -36,6 +37,7 @@ export function LeftPanel() {
     start,
     addVariable,
     deleteVariable,
+    popupIds,
   } = useEditorContext();
   return (
     <aside className="left-panel">
@@ -57,6 +59,7 @@ export function LeftPanel() {
         {project.screens.map((s, i) => (
           <button
             key={s.id}
+            disabled={running && (isPopup(s) || popupIds.length > 0)}
             className={"screen-row " + (screen.id === s.id ? "selected" : "")}
             onClick={() => {
               setScreenId(s.id);
@@ -64,7 +67,11 @@ export function LeftPanel() {
             }}
           >
             <LayoutDashboard size={15} />
-            <span>{s.name}</span>
+            <span>
+              {s.name}
+              {isPopup(s) ? " · Popup" : ""}
+              {s.parentScreenId ? " · 繼承" : ""}
+            </span>
             {s.id === project.startScreenId ? (
               <span className="start-tag">起始</span>
             ) : (

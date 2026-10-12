@@ -164,6 +164,19 @@ try {
     invalids.push(p);
   }
   const duplicate = structuredClone(project);
+  for (const [property, value] of [
+    ["type", null],
+    ["type", "invalid"],
+    ["type", "popup"],
+    ["parentScreenId", null],
+    ["parentScreenId", ""],
+    ["parentScreenId", "missing"],
+    ["parentScreenId", project.screens[0].id],
+  ]) {
+    const invalid = structuredClone(project);
+    invalid.screens[0][property] = value;
+    invalids.push(invalid);
+  }
   duplicate.screens[0].elements[0].id = duplicate.variables[0].id;
   invalids.push(duplicate);
   for (const p of invalids) {
