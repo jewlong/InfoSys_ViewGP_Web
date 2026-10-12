@@ -334,7 +334,7 @@ export function ProjectDialogs() {
             {dialog === "help" && (
               <>
                 <p>
-                  ViewX Studio <b>v0.2.0</b> · 瀏覽器畫面規劃工具
+                  ViewGP <b>v0.2.0</b> · 瀏覽器畫面規劃工具
                 </p>
                 <ol className="help-steps">
                   <li>從左側加入元件，拖曳定位或調整四角控制點。</li>

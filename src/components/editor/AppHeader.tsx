@@ -1,15 +1,13 @@
-import { Layers } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
+import infosystemLogo from "../../assets/infosystem-logo.jpg";
 export function AppHeader() {
   const { project, dirty, right } = useEditorContext();
   return (
     <header className="app-header">
-      <div className="brand-mark">
-        <Layers size={22} />
+      <div className="brand-logo">
+        <img src={infosystemLogo} alt="Infosystem" />
       </div>
-      <div className="brand">
-        ViewX<span>STUDIO</span>
-      </div>
+      <div className="brand">ViewGP</div>
       <span className="header-divider" />
       <div className="project-header">
         <span>{project.name}</span>
@@ -22,7 +20,7 @@ export function AppHeader() {
           本機工作區
         </span>
         <button className="avatar" title="本機單人模式">
-          VX
+          GP
         </button>
       </div>
     </header>

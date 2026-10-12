@@ -82,17 +82,20 @@ kbd {
   padding: 0 24px;
   gap: 10px;
 }
-.brand-mark {
-  width: 34px;
-  height: 34px;
-  background: #5c6de8;
-  border-radius: 10px;
-  color: #fff;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 3px 7px #5c6de824;
+.brand-logo {
+  width: 167px;
+  height: 33px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.brand-logo img {
+  display: block;
+  width: 191.617%;
+  height: auto;
+  max-width: none;
 }
 .brand {
+  flex-shrink: 0;
   font-size: 21px;
   font-weight: 800;
   letter-spacing: -0.7px;
@@ -113,6 +116,7 @@ kbd {
   margin: 0 14px;
 }
 .project-header {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -1430,9 +1434,9 @@ kbd {
     width: 145px;
     min-width: 145px;
   }
-  .brand-mark {
-    width: 29px;
-    height: 29px;
+  .brand-logo {
+    width: 110px;
+    height: 22px;
   }
   .header-right {
     display: none;

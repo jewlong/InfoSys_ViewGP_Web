@@ -1,4 +1,4 @@
-# ViewX Studio
+# ViewGP
 
 Web 畫面規劃工具：**TypeScript + React 前端、C# + ASP.NET Core 後端、SQLite 儲存**。瀏覽器執行使用模擬資料，無須舊 `.vxf` 或原有 HMI。
 

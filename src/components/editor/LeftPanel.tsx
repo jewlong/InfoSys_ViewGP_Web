@@ -368,7 +368,7 @@ export function LeftPanel() {
       )}
       <div className="left-footer">
         <span className="version-dot" />
-        ViewX Studio<span>v0.2.0</span>
+        ViewGP<span>v0.2.0</span>
       </div>
     </aside>
   );
