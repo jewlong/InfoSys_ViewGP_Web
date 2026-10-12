@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   LayoutDashboard,
   MousePointer2,
@@ -10,8 +11,10 @@ import {
 import { useEditorContext } from "../../context/EditorContext";
 import { labels, type Kind } from "../../model";
 import { widgetRegistry } from "../../registry/widgetRegistry";
+import { SYSTEM_VARIABLES } from "../../services/systemVariables";
 import { clone } from "../../utils/project";
 export function LeftPanel() {
+  const [varCategory, setVarCategory] = useState<"project" | "system">("project");
   const {
     project,
     setScreenId,
@@ -138,74 +141,170 @@ export function LeftPanel() {
         </>
       ) : (
         <div className="variable-panel">
-          <div className="variable-heading">
-            專案變數
-            <button disabled={running} onClick={addVariable}>
-              <Plus size={15} />
-              新增
+          <div
+            style={{
+              display: "flex",
+              gap: "4px",
+              marginBottom: "8px",
+              padding: "2px",
+              background: "rgba(0,0,0,0.2)",
+              borderRadius: "4px",
+            }}
+          >
+            <button
+              style={{
+                flex: 1,
+                padding: "4px 8px",
+                fontSize: "12px",
+                border: "none",
+                borderRadius: "3px",
+                cursor: "pointer",
+                background: varCategory === "project" ? "#3b82f6" : "transparent",
+                color: "#ffffff",
+              }}
+              onClick={() => setVarCategory("project")}
+            >
+              專案變數 ({project.variables.length})
+            </button>
+            <button
+              style={{
+                flex: 1,
+                padding: "4px 8px",
+                fontSize: "12px",
+                border: "none",
+                borderRadius: "3px",
+                cursor: "pointer",
+                background: varCategory === "system" ? "#3b82f6" : "transparent",
+                color: "#ffffff",
+              }}
+              onClick={() => setVarCategory("system")}
+            >
+              系統變數 $SYS ({SYSTEM_VARIABLES.length})
             </button>
           </div>
-          <div className="search-box">
-            <Search size={14} />
-            <input
-              aria-label="搜尋變數"
-              placeholder="搜尋變數…"
-              value={variableSearch}
-              onChange={(e) => setVariableSearch(e.target.value)}
-            />
-          </div>
-          {project.variables
-            .filter((v) =>
-              (v.name + " " + (v.category ?? "")).includes(variableSearch),
-            )
-            .map((v) => (
-              <div className="variable-card" key={v.id}>
-                <div>
-                  <VariableIcon size={14} />
-                  <b>{v.name}</b>
-                  <span>{v.type}</span>
-                </div>
-                {running ? (
-                  <input
-                    aria-label={`模擬值 ${v.name}`}
-                    type={v.type === "number" ? "number" : "text"}
-                    value={String(values[v.id])}
-                    onChange={(e) => {
-                      const val =
-                        v.type === "number"
-                          ? Number(e.target.value)
-                          : v.type === "boolean"
-                            ? e.target.value === "true"
-                            : e.target.value;
-                      setValues((old) => ({ ...old, [v.id]: val }));
-                    }}
-                  />
-                ) : (
-                  <div className="variable-meta">
-                    <span>
-                      {v.category ? `${v.category} · ` : ""}初始值：
-                      {String(v.initial)}
-                    </span>
-                    <button
-                      aria-label={`編輯 ${v.name}`}
-                      onClick={() => {
-                        setVariableDraft(clone(v));
-                        setDialog("variable");
-                      }}
-                    >
-                      <Settings2 size={13} />
-                    </button>
-                    <button
-                      aria-label={`刪除 ${v.name}`}
-                      onClick={() => deleteVariable(v.id)}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                )}
+          {varCategory === "project" ? (
+            <>
+              <div className="variable-heading">
+                專案自訂變數
+                <button disabled={running} onClick={addVariable}>
+                  <Plus size={15} />
+                  新增
+                </button>
               </div>
-            ))}
+              <div className="search-box">
+                <Search size={14} />
+                <input
+                  aria-label="搜尋變數"
+                  placeholder="搜尋變數…"
+                  value={variableSearch}
+                  onChange={(e) => setVariableSearch(e.target.value)}
+                />
+              </div>
+              {project.variables
+                .filter((v) =>
+                  (v.name + " " + (v.category ?? "")).includes(variableSearch),
+                )
+                .map((v) => (
+                  <div className="variable-card" key={v.id}>
+                    <div>
+                      <VariableIcon size={14} />
+                      <b>{v.name}</b>
+                      <span>{v.type}</span>
+                    </div>
+                    {running ? (
+                      <input
+                        aria-label={`模擬值 ${v.name}`}
+                        type={v.type === "number" ? "number" : "text"}
+                        value={String(values[v.id])}
+                        onChange={(e) => {
+                          const val =
+                            v.type === "number"
+                              ? Number(e.target.value)
+                              : v.type === "boolean"
+                                ? e.target.value === "true"
+                                : e.target.value;
+                          setValues((old) => ({ ...old, [v.id]: val }));
+                        }}
+                      />
+                    ) : (
+                      <div className="variable-meta">
+                        <span>
+                          {v.category ? `${v.category} · ` : ""}初始值：
+                          {String(v.initial)}
+                        </span>
+                        <button
+                          aria-label={`編輯 ${v.name}`}
+                          onClick={() => {
+                            setVariableDraft(clone(v));
+                            setDialog("variable");
+                          }}
+                        >
+                          <Settings2 size={13} />
+                        </button>
+                        <button
+                          aria-label={`刪除 ${v.name}`}
+                          onClick={() => deleteVariable(v.id)}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </>
+          ) : (
+            <>
+              <div className="variable-heading">
+                系統內部接點與暫存器
+                <span style={{ fontSize: "11px", color: "#94a3b8" }}>唯讀 (RO)</span>
+              </div>
+              <div className="search-box">
+                <Search size={14} />
+                <input
+                  aria-label="搜尋系統變數"
+                  placeholder="搜尋系統變數…"
+                  value={variableSearch}
+                  onChange={(e) => setVariableSearch(e.target.value)}
+                />
+              </div>
+              {SYSTEM_VARIABLES.filter((s) =>
+                (s.id + " " + s.name + " " + s.description).includes(
+                  variableSearch,
+                ),
+              ).map((s) => (
+                <div className="variable-card" key={s.id}>
+                  <div>
+                    <VariableIcon size={14} />
+                    <b>{s.id}</b>
+                    <span style={{ color: "#38bdf8" }}>{s.type}</span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#94a3b8",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    {s.name}
+                  </div>
+                  <div
+                    style={{
+                      background: "rgba(0,0,0,0.3)",
+                      padding: "4px 8px",
+                      borderRadius: "4px",
+                      fontFamily: "monospace",
+                      fontSize: "12px",
+                      color: "#f1f5f9",
+                    }}
+                  >
+                    即時值：{String(values[s.id] ?? "--")}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
+
       )}
       <div className="left-footer">
         <span className="version-dot" />

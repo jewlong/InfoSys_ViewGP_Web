@@ -1,13 +1,17 @@
-import type { Element, Project, Variable } from "../model";
+import type { Element, Project, Variable } from "../model.ts";
+import { getSystemVariable, isSystemVariable } from "./systemVariables.ts";
 
 export function bindingTypes(e: Element): Variable["type"][] {
-  if (["number", "input", "gauge", "bar", "trend"].includes(e.kind))
+  if (
+    ["number", "input", "gauge", "bar", "trend", "multistate"].includes(e.kind)
+  )
     return ["number"];
   if (["indicator", "switch"].includes(e.kind)) return ["boolean"];
-  if (e.kind === "text") return ["number", "boolean", "string"];
+  if (["text", "datetime"].includes(e.kind))
+    return ["number", "boolean", "string"];
   if (e.kind === "button") {
-    if (e.action === "screen") return [];
-    if (e.action === "toggle") return ["boolean"];
+    if (["screen", "previousScreen"].includes(e.action)) return [];
+    if (["toggle", "momentary"].includes(e.action)) return ["boolean"];
     if (e.action === "increment") return ["number"];
     return ["number", "boolean", "string"];
   }
@@ -47,8 +51,14 @@ export function inputError(e: Element, raw: string): string | undefined {
 }
 export function bindingProblems(e: Element, project: Project): string[] {
   const errors: string[] = [];
-  const variable = project.variables.find((v) => v.id === e.variableId);
+  const isSys = isSystemVariable(e.variableId);
+  const sysVar = isSys ? getSystemVariable(e.variableId!) : undefined;
+  const variable = isSys
+    ? undefined
+    : project.variables.find((v) => v.id === e.variableId);
   const types = bindingTypes(e);
+  const isNavigationAction =
+    e.kind === "button" && ["screen", "previousScreen"].includes(e.action);
   const required =
     [
       "number",
@@ -58,25 +68,42 @@ export function bindingProblems(e: Element, project: Project): string[] {
       "gauge",
       "bar",
       "trend",
+      "multistate",
     ].includes(e.kind) ||
-    (e.kind === "button" && e.action !== "screen");
-  if (
-    (required || e.variableId) &&
-    !(e.kind === "button" && e.action === "screen") &&
-    !variable
-  )
-    errors.push("未綁定有效變數");
-  if (variable && types.length && !types.includes(variable.type))
-    errors.push(`綁定類型不符，需使用 ${types.join("／")} 變數`);
+    (e.kind === "button" && !isNavigationAction);
+
+  if ((required || e.variableId) && !isNavigationAction) {
+    if (isSys) {
+      if (!sysVar) errors.push("未綁定有效系統變數");
+      else if (types.length && !types.includes(sysVar.type))
+        errors.push(`綁定類型不符，需使用 ${types.join("／")} 變數`);
+      if (
+        e.kind === "button" &&
+        ["set", "increment", "toggle", "reset", "momentary"].includes(e.action)
+      )
+        errors.push("系統變數為唯讀，不可寫入");
+    } else {
+      if (!variable) errors.push("未綁定有效變數");
+      else if (types.length && !types.includes(variable.type))
+        errors.push(`綁定類型不符，需使用 ${types.join("／")} 變數`);
+    }
+  }
+
   for (const [id, name] of [
     [e.conditionId, "顯示"],
     [e.enabledId, "啟用"],
-  ] as const)
-    if (
-      id &&
-      !project.variables.some((v) => v.id === id && v.type === "boolean")
-    )
-      errors.push(`${name}條件需綁定有效布林變數`);
+  ] as const) {
+    if (id) {
+      const conditionSys = isSystemVariable(id)
+        ? getSystemVariable(id)
+        : undefined;
+      const conditionUser = project.variables.find((v) => v.id === id);
+      const isBool =
+        conditionSys?.type === "boolean" || conditionUser?.type === "boolean";
+      if (!isBool) errors.push(`${name}條件需綁定有效布林變數`);
+    }
+  }
+
   if (e.kind === "button") {
     if (
       e.action === "screen" &&
@@ -135,7 +162,10 @@ export function actionPatch(
     variables.find((v) => types.includes(v.type));
   return {
     action,
-    variableId: action === "screen" ? undefined : variable?.id,
+    variableId: ["screen", "previousScreen"].includes(action)
+      ? undefined
+      : variable?.id,
+    ...(action === "screen" ? { targetScreenId: e.targetScreenId } : {}),
     ...(action === "set" && variable
       ? { actionValue: String(variable.initial) }
       : action === "increment" && parseNumber(e.actionValue) === undefined
@@ -143,6 +173,7 @@ export function actionPatch(
         : {}),
   };
 }
+
 export function evaluateAction(
   e: Element,
   project: Project,
@@ -150,11 +181,14 @@ export function evaluateAction(
 ):
   | { error: string }
   | { screenId: string }
+  | { actionType: "previousScreen" }
   | { variableId: string; value: number | boolean | string } {
   const errors = bindingProblems(e, project);
   if (errors.length) return { error: errors[0] };
   if (e.kind === "button" && e.action === "screen")
     return { screenId: e.targetScreenId! };
+  if (e.kind === "button" && e.action === "previousScreen")
+    return { actionType: "previousScreen" };
   const variable = project.variables.find((v) => v.id === e.variableId);
   if (!variable) return { error: "元件未綁定有效變數" };
   let value: number | boolean | string;
@@ -162,6 +196,9 @@ export function evaluateAction(
     if (variable.type !== "boolean" || typeof values[variable.id] !== "boolean")
       return { error: "切換需使用布林值" };
     value = !values[variable.id];
+  } else if (e.action === "momentary") {
+    if (variable.type !== "boolean") return { error: "點動需使用布林值" };
+    value = e.actionValue === "false" ? false : true;
   } else if (e.action === "reset") value = variable.initial;
   else if (e.action === "increment") {
     const previous = values[variable.id];
@@ -178,3 +215,4 @@ export function evaluateAction(
     return { error: "動作結果超出有效數值範圍" };
   return { variableId: variable.id, value };
 }
+

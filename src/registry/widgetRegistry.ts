@@ -2,6 +2,10 @@ import { GaugeWidget } from "../components/widgets/GaugeWidget";
 import { BarWidget } from "../components/widgets/BarWidget";
 import { TrendWidget } from "../components/widgets/TrendWidget";
 import { AlarmWidget } from "../components/widgets/AlarmWidget";
+import { DateTimeWidget } from "../components/widgets/DateTimeWidget";
+import { MultistateWidget } from "../components/widgets/MultistateWidget";
+import { ScaleWidget } from "../components/widgets/ScaleWidget";
+import { TableWidget } from "../components/widgets/TableWidget";
 import {
   Activity,
   Gauge,
@@ -9,11 +13,15 @@ import {
   ChartLine,
   Bell,
   Circle,
+  Clock,
   Hash,
   Image,
+  Layers,
   Minus,
   MousePointer2,
+  Ruler,
   Square,
+  Table as TableIcon,
   TextCursorInput,
   ToggleLeft,
   Type,
@@ -65,4 +73,9 @@ export const widgetRegistry: Record<Kind, WidgetDefinition> = {
   bar: define("bar", BarChart3, BarWidget),
   trend: define("trend", ChartLine, TrendWidget),
   alarm: define("alarm", Bell, AlarmWidget),
+  datetime: define("datetime", Clock, DateTimeWidget),
+  multistate: define("multistate", Layers, MultistateWidget),
+  scale: define("scale", Ruler, ScaleWidget),
+  table: define("table", TableIcon, TableWidget),
 };
+

@@ -16,6 +16,23 @@ public static class AdvancedSettingsValidator
         foreach (var name in new[] { "showValue", "showScale" })
             if (element.TryGetProperty(name, out var value) && value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return false;
         if (element.TryGetProperty("orientation", out var direction) && (direction.ValueKind != JsonValueKind.String || !new[] { "horizontal", "vertical" }.Contains(direction.GetString()))) return false;
+        if (element.TryGetProperty("scaleOrientation", out var sDir) && (sDir.ValueKind != JsonValueKind.String || !new[] { "horizontal", "vertical" }.Contains(sDir.GetString()))) return false;
+        if (element.TryGetProperty("gridColor", out var gColor) && (gColor.ValueKind != JsonValueKind.String || !Regex.IsMatch(gColor.GetString()!, "^#[0-9a-fA-F]{6}$"))) return false;
+        if (element.TryGetProperty("dateTimeFormat", out var dtFormat) && (dtFormat.ValueKind != JsonValueKind.String || dtFormat.GetString()!.Length > 100)) return false;
+        foreach (var name in new[] { "scaleShowAxis", "scaleShowLabels", "tableDiagonal" })
+            if (element.TryGetProperty(name, out var value) && value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return false;
+        foreach (var (name, min, max) in new[] { ("tableCols", 1, 50), ("tableRows", 1, 50), ("scaleMajorTicks", 1, 50), ("scaleMinorTicks", 0, 50) })
+            if (element.TryGetProperty(name, out var value) && (!Finite(value) || value.GetDouble() != Math.Truncate(value.GetDouble()) || value.GetDouble() < min || value.GetDouble() > max)) return false;
+        if (element.TryGetProperty("multistateItems", out var items))
+        {
+            if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() > 20) return false;
+            foreach (var item in items.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object || !item.TryGetProperty("value", out var v) || !Finite(v) ||
+                    !item.TryGetProperty("label", out var l) || l.ValueKind != JsonValueKind.String || l.GetString()!.Length > 50 ||
+                    !item.TryGetProperty("color", out var c) || c.ValueKind != JsonValueKind.String || !Regex.IsMatch(c.GetString()!, "^#[0-9a-fA-F]{6}$")) return false;
+            }
+        }
         foreach (var (name, min, max) in new[] { ("sampleInterval", 100, 60000), ("historyPoints", 10, 600), ("alarmMaxRows", 1, 100) })
             if (element.TryGetProperty(name, out var value) && (!Finite(value) || value.GetDouble() != Math.Truncate(value.GetDouble()) || value.GetDouble() < min || value.GetDouble() > max)) return false;
         if (!element.TryGetProperty("alarmRules", out var rules)) return true;

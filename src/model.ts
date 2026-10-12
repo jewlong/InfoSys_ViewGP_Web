@@ -12,7 +12,25 @@ export type Kind =
   | "gauge"
   | "bar"
   | "trend"
-  | "alarm";
+  | "alarm"
+  | "datetime"
+  | "multistate"
+  | "scale"
+  | "table";
+export type Action =
+  | "toggle"
+  | "set"
+  | "increment"
+  | "screen"
+  | "reset"
+  | "momentary"
+  | "previousScreen";
+export type MultistateItem = {
+  value: number;
+  label: string;
+  color: string;
+  textColor?: string;
+};
 export type Variable = {
   id: string;
   name: string;
@@ -42,7 +60,7 @@ export type Element = {
   background: string;
   fontSize: number;
   variableId?: string;
-  action: "toggle" | "set" | "increment" | "screen" | "reset";
+  action: Action;
   actionValue: string;
   targetScreenId?: string;
   locked: boolean;
@@ -96,6 +114,17 @@ export type Element = {
   buttonPressedColor?: string;
   buttonDisabledBackground?: string;
   buttonDisabledColor?: string;
+  dateTimeFormat?: string;
+  multistateItems?: MultistateItem[];
+  scaleOrientation?: "horizontal" | "vertical";
+  scaleMajorTicks?: number;
+  scaleMinorTicks?: number;
+  scaleShowAxis?: boolean;
+  scaleShowLabels?: boolean;
+  tableCols?: number;
+  tableRows?: number;
+  tableDiagonal?: boolean;
+  gridColor?: string;
 };
 export type Screen = {
   id: string;
@@ -133,6 +162,10 @@ export const labels: Record<Kind, string> = {
   bar: "長條顯示",
   trend: "趨勢圖",
   alarm: "警報清單",
+  datetime: "時間/日期",
+  multistate: "多狀態指示燈",
+  scale: "刻度",
+  table: "表格",
 };
 export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
   id: uid(),
@@ -143,37 +176,53 @@ export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
   width:
     kind === "alarm"
       ? 480
-      : kind === "trend"
-        ? 400
-        : kind === "gauge"
-          ? 220
-          : kind === "bar"
-            ? 240
-            : kind === "line"
-              ? 160
-              : kind === "indicator"
-                ? 44
-                : kind === "circle"
-                  ? 80
-                  : 160,
+      : kind === "table"
+        ? 320
+        : kind === "trend"
+          ? 400
+          : kind === "gauge"
+            ? 220
+            : kind === "bar" || kind === "scale"
+              ? 240
+              : kind === "datetime"
+                ? 220
+                : kind === "line"
+                  ? 160
+                  : kind === "indicator" || kind === "multistate"
+                    ? 44
+                    : kind === "circle"
+                      ? 80
+                      : 160,
   height:
     kind === "alarm"
       ? 220
       : kind === "trend"
         ? 200
-        : kind === "gauge"
+        : kind === "table"
           ? 180
-          : kind === "bar"
-            ? 100
-            : kind === "line"
-              ? 4
-              : kind === "indicator"
+          : kind === "gauge"
+            ? 180
+            : kind === "bar"
+              ? 100
+              : kind === "scale" || kind === "datetime"
                 ? 44
-                : kind === "circle"
-                  ? 80
-                  : 48,
+                : kind === "line"
+                  ? 4
+                  : kind === "indicator" || kind === "multistate"
+                    ? 44
+                    : kind === "circle"
+                      ? 80
+                      : 48,
   text:
-    kind === "button" ? "啟動" : kind === "text" ? "文字內容" : labels[kind],
+    kind === "button"
+      ? "啟動"
+      : kind === "text"
+        ? "文字內容"
+        : kind === "datetime"
+          ? "YYYY/MM/DD HH:mm:ss"
+          : kind === "multistate"
+            ? "停止"
+            : labels[kind],
   color: "#e2e8f0",
   background:
     kind === "button"
@@ -197,6 +246,41 @@ export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
   ...(kind === "bar" ? { orientation: "horizontal" as const } : {}),
   ...(kind === "trend" ? { sampleInterval: 1000, historyPoints: 120 } : {}),
   ...(kind === "alarm" ? { alarmRules: [], alarmMaxRows: 20 } : {}),
+  ...(kind === "datetime" ? { dateTimeFormat: "YYYY/MM/DD HH:mm:ss" } : {}),
+  ...(kind === "multistate"
+    ? {
+        borderRadius: 22,
+        background: "#64748b",
+        multistateItems: [
+          { value: 0, label: "停止", color: "#64748b", textColor: "#ffffff" },
+          { value: 1, label: "運轉", color: "#22c55e", textColor: "#ffffff" },
+          { value: 2, label: "異常", color: "#ef4444", textColor: "#ffffff" },
+        ],
+      }
+    : {}),
+  ...(kind === "scale"
+    ? {
+        scaleOrientation: "horizontal" as const,
+        scaleMajorTicks: 5,
+        scaleMinorTicks: 4,
+        scaleMin: 0,
+        scaleMax: 100,
+        scaleShowAxis: true,
+        scaleShowLabels: true,
+        color: "#94a3b8",
+      }
+    : {}),
+  ...(kind === "table"
+    ? {
+        tableCols: 3,
+        tableRows: 4,
+        tableDiagonal: false,
+        borderWidth: 1,
+        borderColor: "#475569",
+        gridColor: "#334155",
+        background: "#1e293b",
+      }
+    : {}),
 });
 export function newProject(): Project {
   const id = uid();
@@ -446,6 +530,9 @@ export function validateProject(value: unknown): value is Project {
               "enabledId",
               "image",
               "unit",
+              "dateTimeFormat",
+              "gridColor",
+              "scaleOrientation",
             ].every(
               (k) =>
                 e[k as keyof Element] === undefined ||
@@ -457,9 +544,15 @@ export function validateProject(value: unknown): value is Project {
                 e.decimals <= 6)) &&
             typeof e.locked === "boolean" &&
             typeof e.visible === "boolean" &&
-            ["toggle", "set", "increment", "screen", "reset"].includes(
-              e.action,
-            ) &&
+            [
+              "toggle",
+              "set",
+              "increment",
+              "screen",
+              "reset",
+              "momentary",
+              "previousScreen",
+            ].includes(e.action) &&
             (!e.image ||
               (typeof e.image === "string" &&
                 /^data:image\/(png|jpeg|webp|gif);base64,/.test(e.image))),
@@ -567,6 +660,58 @@ export function validateAdvancedSettings(e: Element): boolean {
     !["horizontal", "vertical"].includes(e.orientation)
   )
     return false;
+  if (
+    e.scaleOrientation !== undefined &&
+    !["horizontal", "vertical"].includes(e.scaleOrientation)
+  )
+    return false;
+  if (
+    e.gridColor !== undefined &&
+    (typeof e.gridColor !== "string" || !/^#[\da-f]{6}$/i.test(e.gridColor))
+  )
+    return false;
+  if (
+    e.dateTimeFormat !== undefined &&
+    (typeof e.dateTimeFormat !== "string" || e.dateTimeFormat.length > 100)
+  )
+    return false;
+  for (const key of [
+    "scaleShowAxis",
+    "scaleShowLabels",
+    "tableDiagonal",
+  ] as const)
+    if (e[key] !== undefined && typeof e[key] !== "boolean") return false;
+  for (const [key, min, max] of [
+    ["tableCols", 1, 50],
+    ["tableRows", 1, 50],
+    ["scaleMajorTicks", 1, 50],
+    ["scaleMinorTicks", 0, 50],
+  ] as const)
+    if (
+      e[key] !== undefined &&
+      (!Number.isInteger(e[key]) || e[key]! < min || e[key]! > max)
+    )
+      return false;
+  if (e.multistateItems !== undefined) {
+    if (!Array.isArray(e.multistateItems) || e.multistateItems.length > 20)
+      return false;
+    for (const item of e.multistateItems) {
+      if (
+        !item ||
+        typeof item !== "object" ||
+        typeof item.value !== "number" ||
+        !Number.isFinite(item.value) ||
+        typeof item.label !== "string" ||
+        item.label.length > 50 ||
+        typeof item.color !== "string" ||
+        !/^#[\da-f]{6}$/i.test(item.color) ||
+        (item.textColor !== undefined &&
+          (typeof item.textColor !== "string" ||
+            !/^#[\da-f]{6}$/i.test(item.textColor)))
+      )
+        return false;
+    }
+  }
   for (const [key, min, max] of [
     ["sampleInterval", 100, 60000],
     ["historyPoints", 10, 600],

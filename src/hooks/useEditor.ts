@@ -41,6 +41,7 @@ export function useEditorCore() {
     values,
     setValues,
     action,
+    momentaryAction,
     input,
     resetSimulation,
     trendData,
@@ -48,6 +49,7 @@ export function useEditorCore() {
     acknowledgeAlarm,
   } = useSimulation({
     project,
+    screenId: screen.id,
     setScreenId,
     notify,
     setLogs,
@@ -513,6 +515,7 @@ export function useEditorCore() {
     check,
     start,
     action,
+    momentaryAction,
     input,
     resetSimulation,
     trendData,

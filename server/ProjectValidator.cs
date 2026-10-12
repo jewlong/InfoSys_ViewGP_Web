@@ -6,10 +6,10 @@ namespace ViewX.Server;
 // contract tests exercise both validators using the same project fixtures.
 public static class ProjectValidator
 {
-    private static readonly HashSet<string> Kinds = ["text", "rectangle", "circle", "line", "image", "button", "indicator", "number", "input", "switch", "gauge", "bar", "trend", "alarm"];
-    private static readonly HashSet<string> Actions = ["toggle", "set", "increment", "screen", "reset"];
+    private static readonly HashSet<string> Kinds = ["text", "rectangle", "circle", "line", "image", "button", "indicator", "number", "input", "switch", "gauge", "bar", "trend", "alarm", "datetime", "multistate", "scale", "table"];
+    private static readonly HashSet<string> Actions = ["toggle", "set", "increment", "screen", "reset", "momentary", "previousScreen"];
     private static readonly string[] RequiredElementStrings = ["name", "text", "color", "background", "actionValue"];
-    private static readonly string[] OptionalElementStrings = ["variableId", "targetScreenId", "groupId", "conditionId", "enabledId", "image", "unit"];
+    private static readonly string[] OptionalElementStrings = ["variableId", "targetScreenId", "groupId", "conditionId", "enabledId", "image", "unit", "dateTimeFormat", "gridColor", "scaleOrientation"];
     private static bool Property(JsonElement element, string name, out JsonElement value)
     {
         value = default;
