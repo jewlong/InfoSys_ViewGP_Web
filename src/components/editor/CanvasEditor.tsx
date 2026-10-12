@@ -32,6 +32,10 @@ export function CanvasEditor() {
     running,
     values,
     setValues,
+    communicationMode,
+    communicationError,
+    runtimeElementDisabled,
+    runtimeDataInvalid,
     zoom,
     grid,
     snap,
@@ -244,7 +248,9 @@ export function CanvasEditor() {
                       values={running ? values : initialValues(project)}
                       running={running}
                       disabled={Boolean(
-                        running && e.enabledId && !values[e.enabledId],
+                        running &&
+                        ((e.enabledId && !values[e.enabledId]) ||
+                          runtimeElementDisabled(e)),
                       )}
                       onAction={() => action(e, screen.id)}
                       onInput={(val) => input(e, val, screen.id)}
@@ -255,6 +261,11 @@ export function CanvasEditor() {
                       alarmEvents={widgetAlarmEvents(e, alarmEvents)}
                       onAcknowledge={acknowledgeAlarm}
                     />
+                    {running && runtimeDataInvalid(e) && (
+                      <span className="communication-value-error">
+                        資料失效
+                      </span>
+                    )}
                     {!running && selected.includes(e.id) && (
                       <>
                         <span className="selection-label">{e.name}</span>
@@ -281,7 +292,9 @@ export function CanvasEditor() {
           <div className="canvas-caption">
             <span>
               {running
-                ? "瀏覽器模擬執行 · 不連接實際設備"
+                ? communicationMode === "online"
+                  ? "Modbus 設備連線執行"
+                  : "瀏覽器模擬執行 · 不連接實際設備"
                 : "畫布內容即為執行畫面"}
             </span>
             <span>{screenElements(project, screen.id).length} 個元件</span>
@@ -305,7 +318,14 @@ export function CanvasEditor() {
       <footer className="status-bar">
         <button onClick={() => setBottom(!bottom)}>
           <span className="status-dot" />
-          {running ? "模擬執行中" : "就緒"}
+          {running
+            ? communicationMode === "online"
+              ? "設備連線執行中"
+              : "模擬執行中"
+            : "就緒"}
+          {running && communicationMode === "online" && communicationError && (
+            <span className="communication-error">{communicationError}</span>
+          )}
           <ChevronDown size={12} />
         </button>
         <span>

@@ -30,6 +30,10 @@ export function PropertyPanel() {
     running,
     values,
     setValues,
+    communicationMode,
+    communicationSnapshot,
+    communicationError,
+    setDialog,
     resetSimulation,
     notify,
     change,
@@ -49,9 +53,28 @@ export function PropertyPanel() {
         <div className="runtime-panel">
           <div className="runtime-status">
             <Activity size={22} />
-            <b>模擬執行中</b>
-            <span>所有資料為本機模擬值</span>
+            <b>
+              {communicationMode === "online" ? "設備連線執行中" : "模擬執行中"}
+            </b>
+            <span>
+              {communicationMode === "online"
+                ? "映射標籤使用設備資料"
+                : "所有資料為本機模擬值"}
+            </span>
           </div>
+          {communicationMode === "online" && (
+            <>
+              <button
+                className="secondary-btn full"
+                onClick={() => setDialog("communication")}
+              >
+                通訊狀態
+              </button>
+              {communicationError && (
+                <p className="communication-error">{communicationError}</p>
+              )}
+            </>
+          )}
           <h4>變數監看</h4>
           {project.variables.map((v) => (
             <div className="watch-row" key={v.id}>
@@ -59,7 +82,21 @@ export function PropertyPanel() {
                 {v.name}
                 <small>{v.type}</small>
               </label>
-              {v.type === "boolean" ? (
+              {communicationMode === "online" && v.modbus ? (
+                <span
+                  className="communication-watch-value"
+                  title={communicationSnapshot?.tags[v.id]?.error ?? undefined}
+                >
+                  {communicationSnapshot?.tags[v.id]?.quality === "good"
+                    ? String(values[v.id])
+                    : "資料失效"}
+                  <small>
+                    {communicationSnapshot?.tags[v.id]?.quality === "good"
+                      ? "設備即時值"
+                      : "等待連線／通訊異常"}
+                  </small>
+                </span>
+              ) : v.type === "boolean" ? (
                 <button
                   className={"boolean-value " + (values[v.id] ? "on" : "")}
                   onClick={() =>
@@ -90,10 +127,16 @@ export function PropertyPanel() {
             className="secondary-btn full"
             onClick={() => {
               resetSimulation();
-              notify("模擬資料已重設");
+              notify(
+                communicationMode === "online"
+                  ? "設備連線重新開始"
+                  : "模擬資料已重設",
+              );
             }}
           >
-            重設模擬資料
+            {communicationMode === "online"
+              ? "重新開始設備連線"
+              : "重設模擬資料"}
           </button>
         </div>
       ) : current ? (
@@ -168,7 +211,9 @@ export function PropertyPanel() {
               <Layers size={15} />
               圖層
             </span>
-            <span className="muted">{screenElements(project, screen.id).length}</span>
+            <span className="muted">
+              {screenElements(project, screen.id).length}
+            </span>
           </div>
           <div className="layers-list">
             {screenElements(project, screen.id)

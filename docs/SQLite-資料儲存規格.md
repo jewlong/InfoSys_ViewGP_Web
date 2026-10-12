@@ -1,6 +1,6 @@
 # ViewX Studio SQLite 資料儲存規格
 
-整理日期：2026-10-12。程式基準：ViewGP 全域警報版本（已含 Popup、繼承、18 種元件、系統變數及警報歷史）。
+整理日期：2026-10-12。程式基準：ViewGP Modbus TCP／RTU 通訊版本（已含 Popup、繼承、18 種元件、系統變數及警報歷史）。
 
 已核對 `server/ProjectStore.cs`、`server/AlarmHistoryStore.cs` 的DDL／讀寫程式，並以隔離SQLite驗證保存及重啟。現行版本共 **4 張業務資料表、29 個實體欄位**。舊資料庫啟動新服務時會自動建立警報資料表及索引，不修改原專案與版本資料。
 
@@ -162,19 +162,20 @@ CREATE INDEX IF NOT EXISTS ix_alarm_events_session ON alarm_events(session_id);
 
 本節以下都是 **JSON欄位，不是SQL欄位**。「必要」表示現行模型的必填欄位；可選欄位一般省略，不使用null。部分引用與量程可保存未完成草稿，執行前再由專案檢查確認。
 
-| JSON路徑        | 型別         | 必要 | 規格／用途                                                      |
-| --------------- | ------------ | ---- | --------------------------------------------------------------- |
-| `schemaVersion` | number       | 是   | 固定1，格式版本                                                 |
-| `id`            | string       | 是   | 專案ID；API驗證與路徑ID一致                                     |
-| `name`          | string       | 是   | 專案名稱，同步寫入projects.name                                 |
-| `description`   | string       | 是   | 專案說明                                                        |
-| `startScreenId` | string       | 是   | 必須指向存在的一般畫面；Popup不可作起始畫面                     |
-| `screens`       | Screen[]     | 是   | 至少一張畫面；畫面與元件都在此                                  |
-| `variables`     | Variable[]   | 是   | 自訂變數定義，可為空陣列                                        |
-| `assets`        | ImageAsset[] | 否   | 共用圖片資源，最多100張                                         |
-| `autoSave`      | boolean      | 否   | 自動儲存開關，省略時預設關閉                                    |
-| `alarmAreas`    | AlarmArea[]  | 否   | 專案級Word警報區，最多100區；每區最多16個不重複位元             |
-| `alarmTicker`   | object       | 否   | enabled布林、position為top／bottom、intervalMs為1000～60000整數 |
+| JSON路徑        | 型別                  | 必要 | 規格／用途                                                      |
+| --------------- | --------------------- | ---- | --------------------------------------------------------------- |
+| `schemaVersion` | number                | 是   | 固定1，格式版本                                                 |
+| `id`            | string                | 是   | 專案ID；API驗證與路徑ID一致                                     |
+| `name`          | string                | 是   | 專案名稱，同步寫入projects.name                                 |
+| `description`   | string                | 是   | 專案說明                                                        |
+| `startScreenId` | string                | 是   | 必須指向存在的一般畫面；Popup不可作起始畫面                     |
+| `screens`       | Screen[]              | 是   | 至少一張畫面；畫面與元件都在此                                  |
+| `devices`       | CommunicationDevice[] | 否   | TCP／RTU 設備設定，最多 32 個；完整欄位見下節                   |
+| `variables`     | Variable[]            | 是   | 自訂變數定義，可為空陣列                                        |
+| `assets`        | ImageAsset[]          | 否   | 共用圖片資源，最多100張                                         |
+| `autoSave`      | boolean               | 否   | 自動儲存開關，省略時預設關閉                                    |
+| `alarmAreas`    | AlarmArea[]           | 否   | 專案級Word警報區，最多100區；每區最多16個不重複位元             |
+| `alarmTicker`   | object                | 否   | enabled布林、position為top／bottom、intervalMs為1000～60000整數 |
 
 AlarmArea欄位：`id`、`name`（非空、≤200）、`variableId`、可選`maskVariableId`、`group`（≤200）、`updateIntervalMs`（100～60000整數）、`enabled`、`rules`。每條Word規則含`id`、`bit`（0～15）、`message`（非空、≤2000）、`severity`及可選`enabled`。執行前要求Word及遮罩绑定数值变量，初始值為0～65535整數。
 
@@ -195,6 +196,25 @@ AlarmArea欄位：`id`、`name`（非空、≤200）、`variableId`、可選`mas
 
 Popup堆疊、目前開啟對話盒、導航歷程屬於執行狀態，不放在screens[]。父畫面修改後，子畫面依引用即時合成；版本還原會一併還原當时的父畫面與子畫面內容。
 
+### devices[] 與 variables[].modbus：設備與標籤映射
+
+devices 是可選設備設定陣列（最多 32 個），variables[].modbus 是可選位址映射（最多 1000 個）。兩者均存在 projects.content／versions.content，沒有新增 SQL 資料表；資料庫仍是 4 表、29 個實體欄位。還原版本、JSON 匯入／匯出均包含這些設定。
+
+| JSON 欄位                                                  | 型別／用途                            |
+| ---------------------------------------------------------- | ------------------------------------- |
+| devices[].id／name                                         | string，設備唯一 ID／名稱             |
+| devices[].transport／enabled                               | tcp／rtu；boolean 是否啟用            |
+| devices[].unitId／pollIntervalMs／timeoutMs                | 站號、輪詢間隔及逾時                  |
+| devices[].host／port                                       | TCP 主機及連接埠                      |
+| devices[].serialPort／baudRate／parity／dataBits／stopBits | RTU 串列埠及通訊參數                  |
+| variables[].modbus.deviceId                                | 對應設備 ID                           |
+| variables[].modbus.area／address                           | Modbus 資料區及 0 起算位址            |
+| variables[].modbus.dataType／wordOrder                     | 布林／16／32 位元型別及高低 Word 順序 |
+| variables[].modbus.scale／offset                           | 顯示倍率／偏移                        |
+| variables[].modbus.access                                  | read／readWrite                       |
+
+欄位範圍與完整例子見 [Modbus 設備通訊規格](Modbus-設備通訊規格.md)。連線工作階段、即時值、品質與錯誤不保存至 SQLite；現有 Word／元件警報歷史仍保存在警報資料表。沒有設備設定的舊專案可直接開啟。
+
 ### variables[]：自訂變數
 
 | 欄位       | 型別                    | 必要 | 用途                                                               |
@@ -203,6 +223,7 @@ Popup堆疊、目前開啟對話盒、導航歷程屬於執行狀態，不放在
 | `name`     | string                  | 是   | 顯示名稱                                                           |
 | `type`     | string                  | 是   | `number`／`boolean`／`string`                                      |
 | `initial`  | number／boolean／string | 是   | 型別必須符合type；number須有限；保存的是初始值                     |
+| `modbus`   | ModbusMapping           | 否   | 設備來源、資料區、位址、型別、倍率、順序及權限；省略為內部變數     |
 | `category` | string                  | 否   | 分類名稱；目前模型提供此欄位，現行SQL／API結構驗證未獨立檢查其型別 |
 
 `$SYS.*` 系統變數在程式中定義及即時計算，不會另外產生SQL列，也不會自動加入variables[]；元件的variableId可保存系統變數識別碼。

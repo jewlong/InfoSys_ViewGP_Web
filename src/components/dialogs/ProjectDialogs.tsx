@@ -1,3 +1,6 @@
+import { CommunicationDialog } from "./CommunicationDialog";
+import { ModbusMappingFields } from "./ModbusMappingFields";
+import { validMapping } from "../../services/communicationRules";
 import { VersionHistoryDialog } from "./VersionHistoryDialog";
 import { AlarmManagementDialog } from "./AlarmManagementDialog";
 import { ImageResourcesDialog } from "./ImageResourcesDialog";
@@ -28,6 +31,7 @@ export function ProjectDialogs() {
     check,
   } = useEditorContext();
   if (dialog === "versions") return <VersionHistoryDialog />;
+  if (dialog === "communication") return <CommunicationDialog />;
   if (dialog === "alarms") return <AlarmManagementDialog />;
   if (dialog === "assets") return <ImageResourcesDialog />;
   if (dialog === "element") return <ElementPropertiesDialog />;
@@ -202,6 +206,13 @@ export function ProjectDialogs() {
                     notify("變數名稱不能空白或重複", true);
                     return;
                   }
+                  if (
+                    variableDraft.modbus &&
+                    !validMapping(variableDraft.modbus, variableDraft.type)
+                  ) {
+                    notify("標籤位址設定無效", true);
+                    return;
+                  }
                   change((p) => {
                     const i = p.variables.findIndex(
                       (v) => v.id === variableDraft.id,
@@ -242,6 +253,7 @@ export function ProjectDialogs() {
                       setVariableDraft({
                         ...variableDraft,
                         type,
+                        modbus: undefined,
                         initial:
                           type === "number"
                             ? 0
@@ -300,6 +312,13 @@ export function ProjectDialogs() {
                     />
                   )}
                 </Field>
+                <ModbusMappingFields
+                  variable={variableDraft}
+                  devices={project.devices ?? []}
+                  onChange={(modbus) =>
+                    setVariableDraft({ ...variableDraft, modbus })
+                  }
+                />
                 <button className="primary-btn full" type="submit">
                   儲存變數設定
                 </button>
@@ -364,8 +383,8 @@ export function ProjectDialogs() {
                   ))}
                 </div>
                 <p className="info-box">
-                  此版本使用模擬資料，不連接 PLC
-                  或實際設備。部署於內網多人使用前，需加入身分驗證與權限管理。
+                  預設為離線模擬。在「通訊設備與標籤」設定 Modbus TCP／RTU
+                  並切換設備連線後，即可讀寫後端可存取的設備。
                 </p>
               </>
             )}

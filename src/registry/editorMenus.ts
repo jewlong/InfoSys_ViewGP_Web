@@ -85,6 +85,7 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
         disabled: running,
       },
       { label: "專案設定", fn: () => setDialog("project"), disabled: running },
+      { label: "通訊設備與標籤", fn: () => setDialog("communication") },
       { label: "全域警報管理與歷史", fn: () => setDialog("alarms") },
     ],
     編輯: [
@@ -200,16 +201,24 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
       { label: "檢查引用", fn: () => setDialog("check") },
     ],
     執行: [
+      { label: "通訊設定與狀態", fn: () => setDialog("communication") },
       { label: "警報中心", fn: () => setDialog("alarms") },
       { label: "專案檢查", fn: () => setDialog("check") },
       { label: "預覽目前畫面", fn: () => start("preview") },
       { label: "執行完整專案", fn: () => start("run") },
       { label: "停止執行", fn: () => setMode("edit"), disabled: !running },
       {
-        label: "重設模擬資料",
+        label:
+          editor.communicationMode === "online"
+            ? "重新開始設備連線"
+            : "重設模擬資料",
         fn: () => {
           resetSimulation();
-          notify("模擬資料已重設");
+          notify(
+            editor.communicationMode === "online"
+              ? "設備連線重新開始"
+              : "模擬資料已重設",
+          );
         },
         disabled: !running,
       },

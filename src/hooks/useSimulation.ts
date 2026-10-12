@@ -1,8 +1,10 @@
+import { useCommunication } from "./useCommunication";
 import { useRuntimeData } from "./useRuntimeData";
 import { evaluateAction, inputError, parseNumber } from "../services/dataRules";
 import {
   useEffect,
   useRef,
+  useMemo,
   useState,
   type Dispatch,
   type SetStateAction,
@@ -25,6 +27,9 @@ export function useSimulation({
   notify,
   setLogs,
 }: Options) {
+  const [communicationMode, setCommunicationMode] = useState<
+    "offline" | "online"
+  >("offline");
   const [mode, updateMode] = useState<"edit" | "preview" | "run">("edit");
   const [popupIds, updatePopupIds] = useState<string[]>([]);
   const popupRef = useRef<string[]>([]);
@@ -33,11 +38,7 @@ export function useSimulation({
   function releaseMomentary() {
     const ids = [...pressed.current.values()];
     pressed.current.clear();
-    if (ids.length)
-      setValues((old) => ({
-        ...old,
-        ...Object.fromEntries(ids.map((id) => [id, false])),
-      }));
+    for (const id of ids) writeValue(id, false);
   }
   function setPopups(ids: string[]) {
     releaseMomentary();
@@ -71,11 +72,82 @@ export function useSimulation({
     );
   }
   const running = mode !== "edit";
-  const [values, setValues] = useState<Record<string, unknown>>(() =>
+  const [localValues, setValues] = useState<Record<string, unknown>>(() =>
     initialValues(project),
   );
   const [epoch, setEpoch] = useState(0);
-  const runtimeData = useRuntimeData(project, values, running, epoch);
+  const online = running && communicationMode === "online";
+  const communication = useCommunication(project, online, epoch, notify);
+  const values: Record<string, unknown> = useMemo(
+    () =>
+      online
+        ? {
+            ...localValues,
+            ...Object.fromEntries(
+              project.variables
+                .filter((v) => v.modbus)
+                .map((v) => [
+                  v.id,
+                  communication.communicationSnapshot?.tags[v.id]?.quality ===
+                  "good"
+                    ? communication.communicationSnapshot.tags[v.id].value
+                    : undefined,
+                ]),
+            ),
+          }
+        : localValues,
+    [
+      online,
+      localValues,
+      project.variables,
+      communication.communicationSnapshot,
+    ],
+  );
+  const invalidVariableIds = online
+    ? project.variables
+        .filter(
+          (v) =>
+            v.modbus &&
+            communication.communicationSnapshot?.tags[v.id]?.quality !== "good",
+        )
+        .map((v) => v.id)
+    : [];
+  const runtimeData = useRuntimeData(
+    project,
+    values,
+    running,
+    epoch,
+    invalidVariableIds,
+  );
+  function writeValue(id: string, value: unknown) {
+    if (online && project.variables.find((v) => v.id === id)?.modbus)
+      communication.writeDevice(id, value);
+    else setValues((old) => ({ ...old, [id]: value }));
+  }
+  function runtimeElementDisabled(e: Element) {
+    const v = project.variables.find((v) => v.id === e.variableId);
+    const writes =
+      e.kind === "input" ||
+      e.kind === "switch" ||
+      (e.kind === "button" &&
+        ![
+          "screen",
+          "previousScreen",
+          "openDialog",
+          "closeDialog",
+          "popup",
+          "closePopup",
+        ].includes(e.action));
+    return Boolean(
+      online &&
+      v?.modbus &&
+      writes &&
+      (v.modbus.access !== "readWrite" ||
+        communication.communicationSnapshot?.tags[v.id]?.quality !== "good" ||
+        (e.action !== "momentary" &&
+          communication.communicationPending.includes(v.id))),
+    );
+  }
   useEffect(() => {
     if (!running) return;
     const update = () =>
@@ -94,9 +166,12 @@ export function useSimulation({
     return () => window.clearInterval(timer);
   }, [running, project, screenId, runtimeData.alarmEvents]);
   useEffect(() => {
-    window.addEventListener("blur", releaseMomentary);
-    return () => window.removeEventListener("blur", releaseMomentary);
+    const release = () => releaseRef.current();
+    window.addEventListener("blur", release);
+    return () => window.removeEventListener("blur", release);
   }, []);
+  const releaseRef = useRef(releaseMomentary);
+  releaseRef.current = releaseMomentary;
   function resetSimulation() {
     runtimeData.clearRuntimeData();
     setPopups([]);
@@ -106,7 +181,8 @@ export function useSimulation({
   }
   function action(e: Element, sourceScreenId: string) {
     if (!running || !canOperate(e, sourceScreenId)) return;
-    if (e.enabledId && !values[e.enabledId]) return;
+    if ((e.enabledId && !values[e.enabledId]) || runtimeElementDisabled(e))
+      return;
     const result = evaluateAction(e, project, values);
     if ("error" in result) {
       notify(result.error, true);
@@ -128,7 +204,7 @@ export function useSimulation({
       setPopups([]);
       setScreenHistory((old) => [...old, screenId]);
       setScreenId(result.screenId);
-    } else setValues((old) => ({ ...old, [result.variableId]: result.value }));
+    } else writeValue(result.variableId, result.value);
     setLogs((l) => [`${e.name} · 動作：${e.action}`, ...l].slice(0, 50));
   }
   function momentaryAction(e: Element, down: boolean, sourceScreenId: string) {
@@ -136,20 +212,21 @@ export function useSimulation({
       const id = pressed.current.get(e.id);
       if (id) {
         pressed.current.delete(e.id);
-        setValues((old) => ({ ...old, [id]: false }));
+        writeValue(id, false);
       }
       return;
     }
     if (
       !running ||
       !canOperate(e, sourceScreenId) ||
-      (e.enabledId && !values[e.enabledId])
+      (e.enabledId && !values[e.enabledId]) ||
+      runtimeElementDisabled(e)
     )
       return;
     const result = evaluateAction(e, project, values);
     if (!("variableId" in result) || typeof result.value !== "boolean") return;
     pressed.current.set(e.id, result.variableId);
-    setValues((old) => ({ ...old, [result.variableId]: true }));
+    writeValue(result.variableId, true);
   }
   function input(
     e: Element,
@@ -159,18 +236,38 @@ export function useSimulation({
     if (
       !running ||
       !canOperate(e, sourceScreenId) ||
-      (e.enabledId && !values[e.enabledId])
+      (e.enabledId && !values[e.enabledId]) ||
+      runtimeElementDisabled(e)
     )
       return "元件未啟用";
     const variable = project.variables.find((v) => v.id === e.variableId);
     if (variable?.type !== "number") return "需綁定有效數值變數";
     const error = inputError(e, raw);
     if (error) return error;
-    setValues((old) => ({ ...old, [variable.id]: parseNumber(raw)! }));
+    if (online && variable.modbus) {
+      const deviceError = communication.deviceWriteError(
+        variable.id,
+        parseNumber(raw)!,
+      );
+      if (deviceError) return deviceError;
+    }
+    writeValue(variable.id, parseNumber(raw)!);
     setLogs((old) => [`${e.name} · 輸入：${raw}`, ...old].slice(0, 50));
     return undefined;
   }
   return {
+    ...communication,
+    communicationMode,
+    setCommunicationMode,
+    runtimeElementDisabled,
+    runtimeDataInvalid: (e: Element) =>
+      Boolean(
+        online &&
+        project.variables.some((v) => v.id === e.variableId && v.modbus) &&
+        communication.communicationSnapshot?.tags[e.variableId!]?.quality !==
+          "good",
+      ),
+    writeValue,
     mode,
     setMode,
     running,

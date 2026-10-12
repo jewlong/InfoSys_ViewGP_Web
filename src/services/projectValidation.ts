@@ -1,3 +1,4 @@
+import { communicationProblems } from "./communicationRules.ts";
 import { advancedProblems } from "./advancedRules.ts";
 import { bindingProblems } from "./dataRules.ts";
 import type { Project } from "../model";
@@ -6,6 +7,7 @@ import { globalAlarmProblems } from "./globalAlarms.ts";
 export function checkProject(project: Project) {
   const problems: string[] = [
     ...screenProblems(project),
+    ...communicationProblems(project),
     ...globalAlarmProblems(project),
   ];
   project.screens.forEach((s) =>

@@ -97,6 +97,7 @@ export function updateAlarmEvents(
   project: Project,
   values: Record<string, unknown>,
   now: number,
+  unavailable: ReadonlySet<string> = new Set(),
 ): AlarmEvent[] {
   const activeEvents = new Map(
     previous
@@ -109,6 +110,7 @@ export function updateAlarmEvents(
     .flatMap((s) => s.elements)
     .filter((e) => e.kind === "alarm" && e.alarmSource !== "global")) {
     for (const rule of e.alarmRules ?? []) {
+      if (unavailable.has(rule.variableId)) continue;
       const existing = activeEvents.get(JSON.stringify([e.id, rule.id]));
       const active =
         alarmRuleProblems(rule, project).length === 0 &&

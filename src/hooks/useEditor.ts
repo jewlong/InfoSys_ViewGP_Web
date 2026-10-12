@@ -56,6 +56,14 @@ export function useEditorCore() {
     closePopup,
     alarmSession,
     alarmRuntimeProblems,
+    communicationMode,
+    setCommunicationMode,
+    communicationSnapshot,
+    communicationError,
+    communicationPending,
+    runtimeElementDisabled,
+    runtimeDataInvalid,
+    writeValue,
   } = useSimulation({
     project,
     screenId: screen.id,
@@ -174,6 +182,7 @@ export function useEditorCore() {
     setRevision(rev);
     setSavedSnapshot(saved ? JSON.stringify(p) : "");
     setMode("edit");
+    setCommunicationMode("offline");
     setValues(initialValues(p));
     setDialog(null);
   }
@@ -371,6 +380,18 @@ export function useEditorCore() {
       notify("請先修正專案檢查項目", true);
       return;
     }
+    if (
+      communicationMode === "online" &&
+      !project.devices?.some(
+        (d) =>
+          d.enabled &&
+          project.variables.some((v) => v.modbus?.deviceId === d.id),
+      )
+    ) {
+      setDialog("communication");
+      notify("請先設定啟用設備與標籤位址", true);
+      return;
+    }
     resetSimulation();
     if (next === "run" || isPopup(screen)) setScreenId(project.startScreenId);
     if (next === "preview" && isPopup(screen)) showPopup(screen.id);
@@ -378,9 +399,9 @@ export function useEditorCore() {
     setMode(next);
     setMenu(null);
     notify(
-      next === "run"
-        ? "專案開始執行 · 使用模擬資料"
-        : "預覽目前畫面 · 使用模擬資料",
+      (next === "run" ? "專案開始執行" : "預覽目前畫面") +
+        " · " +
+        (communicationMode === "online" ? "設備連線" : "使用模擬資料"),
     );
   }
   function align(kind: string) {
@@ -504,6 +525,14 @@ export function useEditorCore() {
   }
   return {
     ...alarmPersistence,
+    communicationMode,
+    setCommunicationMode,
+    communicationSnapshot,
+    communicationError,
+    communicationPending,
+    runtimeElementDisabled,
+    runtimeDataInvalid,
+    writeValue,
     alarmRuntimeProblems,
     ...persistence,
     ...imageResources,

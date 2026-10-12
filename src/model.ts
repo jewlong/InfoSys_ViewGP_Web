@@ -1,4 +1,5 @@
 import { screenProblems } from "./services/screenRules.ts";
+import { validateCommunicationSettings } from "./services/communicationRules.ts";
 import { validateAlarmSettings } from "./services/globalAlarms.ts";
 
 export type Kind =
@@ -38,7 +39,36 @@ export type MultistateItem = {
   color: string;
   textColor?: string;
 };
+export type CommunicationDevice = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  unitId: number;
+  pollIntervalMs: number;
+  timeoutMs: number;
+} & (
+  | { transport: "tcp"; host: string; port: number }
+  | {
+      transport: "rtu";
+      serialPort: string;
+      baudRate: number;
+      parity: "none" | "even" | "odd";
+      dataBits: 8;
+      stopBits: 1 | 2;
+    }
+);
+export type ModbusMapping = {
+  deviceId: string;
+  area: "coil" | "discreteInput" | "holdingRegister" | "inputRegister";
+  address: number;
+  dataType: "bool" | "uint16" | "int16" | "uint32" | "int32" | "float32";
+  wordOrder: "highFirst" | "lowFirst";
+  scale: number;
+  offset: number;
+  access: "read" | "readWrite";
+};
 export type Variable = {
+  modbus?: ModbusMapping;
   id: string;
   name: string;
   type: "number" | "boolean" | "string";
@@ -170,6 +200,7 @@ export type Screen = {
 };
 export type ImageAsset = { id: string; name: string; data: string };
 export type Project = {
+  devices?: CommunicationDevice[];
   alarmAreas?: AlarmArea[];
   alarmTicker?: AlarmTickerSettings;
   assets?: ImageAsset[];
@@ -478,7 +509,8 @@ export function validateProject(value: unknown): value is Project {
   )
     return false;
   if (p.autoSave !== undefined && typeof p.autoSave !== "boolean") return false;
-  if (!validateAlarmSettings(p)) return false;
+  if (!validateAlarmSettings(p) || !validateCommunicationSettings(p))
+    return false;
   const assetIds = new Set<string>();
   if (
     p.assets !== undefined &&

@@ -102,6 +102,7 @@ export function updateGlobalAlarmEvents(
   values: Record<string, unknown>,
   now: number,
   lastChecks: Map<string, number>,
+  unavailable: ReadonlySet<string> = new Set(),
 ): AlarmEvent[] {
   const active = new Map(
     previous
@@ -111,6 +112,11 @@ export function updateGlobalAlarmEvents(
   const additions: AlarmEvent[] = [],
     cleared = new Map<string, AlarmEvent["clearedReason"]>();
   for (const area of areas) {
+    if (
+      unavailable.has(area.variableId) ||
+      (area.maskVariableId && unavailable.has(area.maskVariableId))
+    )
+      continue;
     if (now - (lastChecks.get(area.id) ?? -Infinity) < area.updateIntervalMs)
       continue;
     lastChecks.set(area.id, now);

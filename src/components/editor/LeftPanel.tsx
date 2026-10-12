@@ -34,6 +34,8 @@ export function LeftPanel() {
     running,
     values,
     setValues,
+    communicationMode,
+    communicationSnapshot,
     grid,
     left,
     leftTab,
@@ -274,7 +276,21 @@ export function LeftPanel() {
                       <input
                         aria-label={`模擬值 ${v.name}`}
                         type={v.type === "number" ? "number" : "text"}
-                        value={String(values[v.id])}
+                        value={
+                          communicationMode === "online" &&
+                          v.modbus &&
+                          communicationSnapshot?.tags[v.id]?.quality !== "good"
+                            ? ""
+                            : String(values[v.id] ?? "")
+                        }
+                        readOnly={
+                          communicationMode === "online" && Boolean(v.modbus)
+                        }
+                        placeholder={
+                          communicationMode === "online" && v.modbus
+                            ? "資料失效"
+                            : undefined
+                        }
                         onChange={(e) => {
                           const val =
                             v.type === "number"

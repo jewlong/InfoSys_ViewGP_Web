@@ -12,11 +12,14 @@ export function useRuntimeData(
   values: Record<string, unknown>,
   running: boolean,
   epoch: number,
+  invalidVariableIds: string[] = [],
 ) {
   const [trendData, setTrendData] = useState<Record<string, TrendPoint[]>>({});
   const [alarmEvents, setAlarmEvents] = useState<AlarmEvent[]>([]);
   const [alarmSession, setAlarmSession] = useState<AlarmSession>();
   const lastChecks = useRef(new Map<string, number>());
+  const unavailable = useRef(new Set<string>());
+  unavailable.current = new Set(invalidVariableIds);
   const valuesRef = useRef(values);
   valuesRef.current = values;
   useEffect(() => {
@@ -63,7 +66,13 @@ export function useRuntimeData(
   useEffect(() => {
     if (running)
       setAlarmEvents((previous) =>
-        updateAlarmEvents(previous, project, values, Date.now()),
+        updateAlarmEvents(
+          previous,
+          project,
+          values,
+          Date.now(),
+          unavailable.current,
+        ),
       );
   }, [project, values, running, epoch]);
   useEffect(() => {
@@ -76,6 +85,7 @@ export function useRuntimeData(
           valuesRef.current,
           Date.now(),
           lastChecks.current,
+          unavailable.current,
         ),
       );
     check();
@@ -103,6 +113,19 @@ export function useRuntimeData(
     acknowledgeAlarm,
     alarmSession,
     clearRuntimeData,
-    alarmRuntimeProblems: running ? globalAlarmProblems(project, values) : [],
+    alarmRuntimeProblems: running
+      ? globalAlarmProblems(
+          {
+            ...project,
+            alarmAreas: project.alarmAreas?.filter(
+              (a) =>
+                !unavailable.current.has(a.variableId) &&
+                (!a.maskVariableId ||
+                  !unavailable.current.has(a.maskVariableId)),
+            ),
+          },
+          values,
+        )
+      : [],
   };
 }

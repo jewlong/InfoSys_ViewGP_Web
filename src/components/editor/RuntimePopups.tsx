@@ -10,6 +10,8 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
   const {
     project,
     values,
+    runtimeElementDisabled,
+    runtimeDataInvalid,
     action,
     input,
     closePopup,
@@ -120,7 +122,10 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
                     assets={project.assets}
                     values={values}
                     running
-                    disabled={Boolean(e.enabledId && !values[e.enabledId])}
+                    disabled={Boolean(
+                      (e.enabledId && !values[e.enabledId]) ||
+                      runtimeElementDisabled(e),
+                    )}
                     onAction={() => action(e, screen.id)}
                     onMomentary={(down) => momentaryAction(e, down, screen.id)}
                     onInput={(value) => input(e, value, screen.id)}
@@ -128,6 +133,9 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
                     alarmEvents={widgetAlarmEvents(e, alarmEvents)}
                     onAcknowledge={acknowledgeAlarm}
                   />
+                  {runtimeDataInvalid(e) && (
+                    <span className="communication-value-error">資料失效</span>
+                  )}
                 </div>
               ))}
           </div>
