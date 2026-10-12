@@ -107,12 +107,16 @@ export function CanvasEditor() {
         <div className="workspace-heading">
           <div>
             <span className="eyebrow">
-              {running ? "RUNTIME PREVIEW" : "SCREEN EDITOR"}
+              {running ? "執行畫面" : "畫面編輯器"}
             </span>
             <span>
               {screen.name}
               <ChevronRight size={12} />
-              {running ? "互動模擬" : "畫面設計"}
+              {running
+                ? communicationMode === "online"
+                  ? "設備監看"
+                  : "離線模擬"
+                : "畫面設計"}
             </span>
           </div>
           <span className="workspace-hint">
@@ -120,173 +124,182 @@ export function CanvasEditor() {
           </span>
         </div>
         <div className="canvas-scroll">
-          <div
-            className="canvas-container"
-            style={{
-              width: screen.width * zoom,
-              height: screen.height * zoom,
-            }}
-          >
+          <div className="screen-frame">
+            <div className="screen-frame-title">
+              <LayoutDashboard size={13} />
+              <span>{screen.name}</span>
+              <small>
+                {Math.round(zoom * 100)}% · {screen.width} × {screen.height}
+              </small>
+            </div>
             <div
-              ref={canvasRef}
-              inert={running && popupIds.length > 0}
-              className={
-                "design-canvas " + (grid && !running ? "show-grid" : "")
-              }
+              className="canvas-container"
               style={{
-                width: screen.width,
-                height: screen.height,
-                backgroundColor: screen.background,
-                transform: `scale(${zoom})`,
-              }}
-              onPointerDown={beginMarquee}
-              onPointerMove={moveMarquee}
-              onPointerUp={endMarquee}
-              onPointerCancel={cancelMarquee}
-              onLostPointerCapture={cancelMarquee}
-              onDragOver={(e) => {
-                if (!running) e.preventDefault();
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                const k = e.dataTransfer.getData("viewx-kind") as Kind;
-                if (running || !(k in labels)) return;
-                const rect = canvasRef.current!.getBoundingClientRect();
-                addElement(
-                  k,
-                  Math.max(
-                    0,
-                    Math.min(
-                      screen.width - 160,
-                      Math.round((e.clientX - rect.left) / zoom),
-                    ),
-                  ),
-                  Math.max(
-                    0,
-                    Math.min(
-                      screen.height - 80,
-                      Math.round((e.clientY - rect.top) / zoom),
-                    ),
-                  ),
-                );
+                width: screen.width * zoom,
+                height: screen.height * zoom,
               }}
             >
-              {screenElements(project, screen.id)
-                .filter(
-                  ({ element: e }) =>
-                    e.visible &&
-                    (!running || !e.conditionId || values[e.conditionId]),
-                )
-                .map(({ element: e, ownerScreenId }) => (
-                  <div
-                    key={e.id}
-                    data-inherited={ownerScreenId !== screen.id || undefined}
-                    title={
-                      !running && ownerScreenId !== screen.id
-                        ? "繼承元件，請到父畫面編輯"
-                        : undefined
-                    }
-                    className={
-                      "canvas-element " +
-                      (!running && selected.includes(e.id)
-                        ? "is-selected"
-                        : "") +
-                      (!running && e.locked ? " is-locked" : "")
-                    }
-                    style={{
-                      left: e.x,
-                      top: e.y,
-                      width: e.width,
-                      height: e.height,
-                      cursor: running
-                        ? "default"
-                        : e.locked || ownerScreenId !== screen.id
-                          ? "not-allowed"
-                          : "move",
-                      pointerEvents:
-                        running &&
-                        !["button", "input", "switch"].includes(e.kind) &&
-                        e.enabledId &&
-                        !values[e.enabledId]
-                          ? "none"
-                          : undefined,
-                      opacity:
-                        running &&
-                        !["button", "input", "switch"].includes(e.kind) &&
-                        e.enabledId &&
-                        !values[e.enabledId]
-                          ? 0.5
-                          : 1,
-                    }}
-                    onContextMenu={(ev) => {
-                      if (running) return;
-                      ev.preventDefault();
-                      ev.stopPropagation();
-                      if (ownerScreenId !== screen.id) {
-                        setSelected([]);
-                        notify("繼承元件請到父畫面編輯");
-                        return;
+              <div
+                ref={canvasRef}
+                inert={running && popupIds.length > 0}
+                className={
+                  "design-canvas " + (grid && !running ? "show-grid" : "")
+                }
+                style={{
+                  width: screen.width,
+                  height: screen.height,
+                  backgroundColor: screen.background,
+                  transform: `scale(${zoom})`,
+                }}
+                onPointerDown={beginMarquee}
+                onPointerMove={moveMarquee}
+                onPointerUp={endMarquee}
+                onPointerCancel={cancelMarquee}
+                onLostPointerCapture={cancelMarquee}
+                onDragOver={(e) => {
+                  if (!running) e.preventDefault();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const k = e.dataTransfer.getData("viewx-kind") as Kind;
+                  if (running || !(k in labels)) return;
+                  const rect = canvasRef.current!.getBoundingClientRect();
+                  addElement(
+                    k,
+                    Math.max(
+                      0,
+                      Math.min(
+                        screen.width - 160,
+                        Math.round((e.clientX - rect.left) / zoom),
+                      ),
+                    ),
+                    Math.max(
+                      0,
+                      Math.min(
+                        screen.height - 80,
+                        Math.round((e.clientY - rect.top) / zoom),
+                      ),
+                    ),
+                  );
+                }}
+              >
+                {screenElements(project, screen.id)
+                  .filter(
+                    ({ element: e }) =>
+                      e.visible &&
+                      (!running || !e.conditionId || values[e.conditionId]),
+                  )
+                  .map(({ element: e, ownerScreenId }) => (
+                    <div
+                      key={e.id}
+                      data-inherited={ownerScreenId !== screen.id || undefined}
+                      title={
+                        !running && ownerScreenId !== screen.id
+                          ? "繼承元件，請到父畫面編輯"
+                          : undefined
                       }
-                      setSelected([e.id]);
-                      setDialog("element");
-                    }}
-                    onPointerDown={(ev) => {
-                      if (!running && ownerScreenId !== screen.id) {
+                      className={
+                        "canvas-element " +
+                        (!running && selected.includes(e.id)
+                          ? "is-selected"
+                          : "") +
+                        (!running && e.locked ? " is-locked" : "")
+                      }
+                      style={{
+                        left: e.x,
+                        top: e.y,
+                        width: e.width,
+                        height: e.height,
+                        cursor: running
+                          ? "default"
+                          : e.locked || ownerScreenId !== screen.id
+                            ? "not-allowed"
+                            : "move",
+                        pointerEvents:
+                          running &&
+                          !["button", "input", "switch"].includes(e.kind) &&
+                          e.enabledId &&
+                          !values[e.enabledId]
+                            ? "none"
+                            : undefined,
+                        opacity:
+                          running &&
+                          !["button", "input", "switch"].includes(e.kind) &&
+                          e.enabledId &&
+                          !values[e.enabledId]
+                            ? 0.5
+                            : 1,
+                      }}
+                      onContextMenu={(ev) => {
+                        if (running) return;
+                        ev.preventDefault();
                         ev.stopPropagation();
-                        setSelected([]);
-                        return;
-                      }
-                      down(ev, e);
-                    }}
-                    onPointerMove={move}
-                    onPointerUp={endDrag}
-                    onPointerCancel={endDrag}
-                  >
-                    <WidgetRenderer
-                      assets={project.assets}
-                      element={e}
-                      values={running ? values : initialValues(project)}
-                      running={running}
-                      disabled={Boolean(
-                        running &&
-                        ((e.enabledId && !values[e.enabledId]) ||
-                          runtimeElementDisabled(e)),
+                        if (ownerScreenId !== screen.id) {
+                          setSelected([]);
+                          notify("繼承元件請到父畫面編輯");
+                          return;
+                        }
+                        setSelected([e.id]);
+                        setDialog("element");
+                      }}
+                      onPointerDown={(ev) => {
+                        if (!running && ownerScreenId !== screen.id) {
+                          ev.stopPropagation();
+                          setSelected([]);
+                          return;
+                        }
+                        down(ev, e);
+                      }}
+                      onPointerMove={move}
+                      onPointerUp={endDrag}
+                      onPointerCancel={endDrag}
+                    >
+                      <WidgetRenderer
+                        assets={project.assets}
+                        element={e}
+                        values={running ? values : initialValues(project)}
+                        running={running}
+                        disabled={Boolean(
+                          running &&
+                          ((e.enabledId && !values[e.enabledId]) ||
+                            runtimeElementDisabled(e)),
+                        )}
+                        onAction={() => action(e, screen.id)}
+                        onInput={(val) => input(e, val, screen.id)}
+                        onMomentary={(down) =>
+                          momentaryAction(e, down, screen.id)
+                        }
+                        samples={trendData[e.id]}
+                        alarmEvents={widgetAlarmEvents(e, alarmEvents)}
+                        onAcknowledge={acknowledgeAlarm}
+                      />
+                      {running && runtimeDataInvalid(e) && (
+                        <span className="communication-value-error">
+                          資料失效
+                        </span>
                       )}
-                      onAction={() => action(e, screen.id)}
-                      onInput={(val) => input(e, val, screen.id)}
-                      onMomentary={(down) =>
-                        momentaryAction(e, down, screen.id)
-                      }
-                      samples={trendData[e.id]}
-                      alarmEvents={widgetAlarmEvents(e, alarmEvents)}
-                      onAcknowledge={acknowledgeAlarm}
-                    />
-                    {running && runtimeDataInvalid(e) && (
-                      <span className="communication-value-error">
-                        資料失效
-                      </span>
-                    )}
-                    {!running && selected.includes(e.id) && (
-                      <>
-                        <span className="selection-label">{e.name}</span>
-                        {["nw", "ne", "sw", "se"].map((c) => (
-                          <span
-                            key={c}
-                            className={"selection-handle " + c}
-                            onPointerDown={(ev) => beginResize(ev, e, c)}
-                          />
-                        ))}
-                      </>
-                    )}
-                  </div>
-                ))}
-              {marquee && (
-                <div
-                  className="selection-marquee"
-                  style={marquee}
-                  aria-hidden="true"
-                />
-              )}
+                      {!running && selected.includes(e.id) && (
+                        <>
+                          <span className="selection-label">{e.name}</span>
+                          {["nw", "ne", "sw", "se"].map((c) => (
+                            <span
+                              key={c}
+                              className={"selection-handle " + c}
+                              onPointerDown={(ev) => beginResize(ev, e, c)}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                {marquee && (
+                  <div
+                    className="selection-marquee"
+                    style={marquee}
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
             </div>
           </div>
           <div className="canvas-caption">

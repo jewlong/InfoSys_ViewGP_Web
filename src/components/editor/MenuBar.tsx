@@ -1,7 +1,7 @@
 import { useEditorContext } from "../../context/EditorContext";
 import { Fragment } from "react";
 export function MenuBar() {
-  const { running, right, menu, setMenu, menuItems, editingMenus } =
+  const { running, communicationMode, menu, setMenu, menuItems, editingMenus } =
     useEditorContext();
   return (
     <nav className="menu-bar" aria-label="主選單">
@@ -43,7 +43,11 @@ export function MenuBar() {
         </div>
       ))}
       <span className="menu-right">
-        {running ? "SIMULATION MODE" : "DESIGN WORKSPACE"}
+        {running
+          ? communicationMode === "online"
+            ? "設備監看"
+            : "離線監看"
+          : "專案規劃"}
       </span>
     </nav>
   );

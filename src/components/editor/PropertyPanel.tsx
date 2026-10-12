@@ -1,3 +1,5 @@
+import { useRef } from "react";
+import { InspectorNavigation } from "./InspectorNavigation";
 import {
   Activity,
   Eye,
@@ -40,8 +42,9 @@ export function PropertyPanel() {
     editScreen,
     setScreenId,
   } = useEditorContext();
+  const panelRef = useRef<HTMLElement>(null);
   return (
-    <aside className="right-panel">
+    <aside className="right-panel" ref={panelRef}>
       <div className="section-heading">
         <span>
           <Settings2 size={15} />
@@ -49,6 +52,13 @@ export function PropertyPanel() {
         </span>
         <span className="muted">{current ? labels[current.kind] : "畫面"}</span>
       </div>
+      {!running && (
+        <InspectorNavigation
+          panel={panelRef}
+          objectId={current?.id ?? screen.id}
+          kind={current?.kind ?? "screen"}
+        />
+      )}
       {running ? (
         <div className="runtime-panel">
           <div className="runtime-status">
@@ -152,51 +162,53 @@ export function PropertyPanel() {
               <small>畫面屬性</small>
             </span>
           </div>
-          <PropertySection title="畫面設定">
-            <ScreenStructureFields />
-            <Field label="畫面名稱">
-              <input
-                value={screen.name}
-                onChange={(e) => editScreen((s) => (s.name = e.target.value))}
-              />
-            </Field>
-            <div className="property-grid">
-              <Field label="寬度">
-                <NumberField
-                  value={screen.width}
-                  min={100}
-                  max={4096}
-                  onChange={(v) => editScreen((s) => (s.width = v))}
-                  suffix="px"
+          <div data-inspector-group="general">
+            <PropertySection title="畫面設定">
+              <ScreenStructureFields />
+              <Field label="畫面名稱">
+                <input
+                  value={screen.name}
+                  onChange={(e) => editScreen((s) => (s.name = e.target.value))}
                 />
               </Field>
-              <Field label="高度">
-                <NumberField
-                  value={screen.height}
-                  min={100}
-                  max={4096}
-                  onChange={(v) => editScreen((s) => (s.height = v))}
-                  suffix="px"
+              <div className="property-grid">
+                <Field label="寬度">
+                  <NumberField
+                    value={screen.width}
+                    min={100}
+                    max={4096}
+                    onChange={(v) => editScreen((s) => (s.width = v))}
+                    suffix="px"
+                  />
+                </Field>
+                <Field label="高度">
+                  <NumberField
+                    value={screen.height}
+                    min={100}
+                    max={4096}
+                    onChange={(v) => editScreen((s) => (s.height = v))}
+                    suffix="px"
+                  />
+                </Field>
+              </div>
+              <Field label="背景顏色">
+                <ColorField
+                  value={screen.background}
+                  onChange={(v) => editScreen((s) => (s.background = v))}
                 />
               </Field>
-            </div>
-            <Field label="背景顏色">
-              <ColorField
-                value={screen.background}
-                onChange={(v) => editScreen((s) => (s.background = v))}
-              />
-            </Field>
-            <button
-              className="secondary-btn full"
-              disabled={isPopup(screen)}
-              onClick={() => change((p) => (p.startScreenId = screen.id))}
-            >
-              <LayoutDashboard size={14} />
-              {screen.id === project.startScreenId
-                ? "已設為起始畫面"
-                : "設為起始畫面"}
-            </button>
-          </PropertySection>
+              <button
+                className="secondary-btn full"
+                disabled={isPopup(screen)}
+                onClick={() => change((p) => (p.startScreenId = screen.id))}
+              >
+                <LayoutDashboard size={14} />
+                {screen.id === project.startScreenId
+                  ? "已設為起始畫面"
+                  : "設為起始畫面"}
+              </button>
+            </PropertySection>
+          </div>
           <div className="empty-selection">
             <MousePointer2 size={24} />
             <p>選取元件以編輯屬性</p>

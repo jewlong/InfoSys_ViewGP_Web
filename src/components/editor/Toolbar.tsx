@@ -1,4 +1,7 @@
 import {
+  Cable,
+  Bell,
+  Tags,
   ChevronDown,
   Eye,
   FilePlus,
@@ -40,9 +43,13 @@ export function Toolbar() {
     openProjects,
     start,
     fit,
+    setDialog,
+    setLeftTab,
+    setLeft,
+    communicationMode,
   } = useEditorContext();
   return (
-    <div className="toolbar">
+    <div className="toolbar" role="toolbar" aria-label="專案工具列">
       <div className="tool-group">
         <Tool
           icon={FilePlus}
@@ -115,12 +122,32 @@ export function Toolbar() {
         />
         <Tool icon={Maximize} label="符合畫面" onClick={fit} />
       </div>
+      <div className="tool-group engineering-tools">
+        <Tool
+          icon={Cable}
+          label="開啟通訊設定"
+          onClick={() => setDialog("communication")}
+        />
+        <Tool
+          icon={Tags}
+          label="開啟標籤管理"
+          onClick={() => {
+            setLeft(true);
+            setLeftTab("variables");
+          }}
+        />
+        <Tool
+          icon={Bell}
+          label="開啟警報管理"
+          onClick={() => setDialog("alarms")}
+        />
+      </div>
       <div className="toolbar-end">
         {running ? (
           <>
             <span className="simulation-pill">
               <span />
-              模擬資料
+              {communicationMode === "online" ? "設備資料" : "離線模擬"}
             </span>
             <button
               className="secondary-btn"

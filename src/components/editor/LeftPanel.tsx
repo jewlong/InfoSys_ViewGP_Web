@@ -1,3 +1,4 @@
+import { ProjectTree } from "./ProjectTree";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -19,7 +20,7 @@ import {
 } from "../../registry/widgetRegistry";
 import { SYSTEM_VARIABLES } from "../../services/systemVariables";
 import { clone } from "../../utils/project";
-import { isPopup, parentScreenId } from "../../services/screenRules";
+
 export function LeftPanel() {
   const [varCategory, setVarCategory] = useState<"project" | "system">(
     "project",
@@ -27,17 +28,11 @@ export function LeftPanel() {
   const [collapsed, setCollapsed] = useState<WidgetCategory[]>([]);
   const {
     project,
-    setScreenId,
-    screen,
-    selected,
-    setSelected,
     running,
     values,
     setValues,
     communicationMode,
     communicationSnapshot,
-    grid,
-    left,
     leftTab,
     setLeftTab,
     search,
@@ -48,10 +43,8 @@ export function LeftPanel() {
     setVariableSearch,
     addElement,
     newScreen,
-    start,
     addVariable,
     deleteVariable,
-    popupIds,
   } = useEditorContext();
   const groups = groupedWidgets(search);
   return (
@@ -70,33 +63,7 @@ export function LeftPanel() {
           <Plus size={16} />
         </button>
       </div>
-      <div className="screen-list">
-        {project.screens.map((s, i) => (
-          <button
-            key={s.id}
-            disabled={running && (isPopup(s) || popupIds.length > 0)}
-            className={"screen-row " + (screen.id === s.id ? "selected" : "")}
-            onClick={() => {
-              setScreenId(s.id);
-              setSelected([]);
-            }}
-          >
-            <LayoutDashboard size={15} />
-            <span>
-              {s.name}
-              {isPopup(s) ? " · Popup" : ""}
-              {parentScreenId(s) ? " · 繼承" : ""}
-            </span>
-            {s.id === project.startScreenId ? (
-              <span className="start-tag">起始</span>
-            ) : (
-              <span className="row-number">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <ProjectTree />
       <div className="left-tabs">
         <button
           className={leftTab === "components" ? "active" : ""}
@@ -200,44 +167,15 @@ export function LeftPanel() {
         </>
       ) : (
         <div className="variable-panel">
-          <div
-            style={{
-              display: "flex",
-              gap: "4px",
-              marginBottom: "8px",
-              padding: "2px",
-              background: "rgba(0,0,0,0.2)",
-              borderRadius: "4px",
-            }}
-          >
+          <div className="variable-source-tabs">
             <button
-              style={{
-                flex: 1,
-                padding: "4px 8px",
-                fontSize: "12px",
-                border: "none",
-                borderRadius: "3px",
-                cursor: "pointer",
-                background:
-                  varCategory === "project" ? "#3b82f6" : "transparent",
-                color: "#ffffff",
-              }}
+              className={varCategory === "project" ? "active" : ""}
               onClick={() => setVarCategory("project")}
             >
               專案變數 ({project.variables.length})
             </button>
             <button
-              style={{
-                flex: 1,
-                padding: "4px 8px",
-                fontSize: "12px",
-                border: "none",
-                borderRadius: "3px",
-                cursor: "pointer",
-                background:
-                  varCategory === "system" ? "#3b82f6" : "transparent",
-                color: "#ffffff",
-              }}
+              className={varCategory === "system" ? "active" : ""}
               onClick={() => setVarCategory("system")}
             >
               系統變數 $SYS ({SYSTEM_VARIABLES.length})
@@ -353,27 +291,10 @@ export function LeftPanel() {
                   <div>
                     <VariableIcon size={14} />
                     <b>{s.id}</b>
-                    <span style={{ color: "#38bdf8" }}>{s.type}</span>
+                    <span className="variable-type">{s.type}</span>
                   </div>
-                  <div
-                    style={{
-                      fontSize: "12px",
-                      color: "#94a3b8",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    {s.name}
-                  </div>
-                  <div
-                    style={{
-                      background: "rgba(0,0,0,0.3)",
-                      padding: "4px 8px",
-                      borderRadius: "4px",
-                      fontFamily: "monospace",
-                      fontSize: "12px",
-                      color: "#f1f5f9",
-                    }}
-                  >
+                  <div className="system-variable-name">{s.name}</div>
+                  <div className="system-variable-value">
                     即時值：{String(values[s.id] ?? "--")}
                   </div>
                 </div>
