@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MousePointer2 } from "lucide-react";
+import { MousePointer2, HandMetal } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
 import { labels } from "../../model";
 import {
@@ -62,10 +62,10 @@ export function WidgetToolbar() {
           </span>
           {Object.entries(widgetRegistry)
             .filter(([, w]) => w.category === c.id)
-            .map(([kind, w]) => {
+            .flatMap(([kind, w]) => {
               const k = kind as keyof typeof labels,
                 Icon = w.icon;
-              return (
+              const tools = [
                 <button
                   key={kind}
                   className="palette-tool"
@@ -80,8 +80,32 @@ export function WidgetToolbar() {
                 >
                   <Icon size={16} />
                   <span>{labels[k]}</span>
-                </button>
-              );
+                </button>,
+              ];
+              if (kind === "button") {
+                tools.push(
+                  <button
+                    key="jog-button"
+                    className="palette-tool"
+                    aria-label="插入點動按鈕"
+                    title="點動按鈕 (JOG - 按住 ON／放開 OFF)"
+                    disabled={running}
+                    onClick={() =>
+                      addElement("button", undefined, undefined, {
+                        name: "點動按鈕",
+                        text: "JOG 點動",
+                        action: "momentary",
+                        actionValue: "true",
+                        background: "#0284c7",
+                      })
+                    }
+                  >
+                    <HandMetal size={16} />
+                    <span>點動按鈕</span>
+                  </button>,
+                );
+              }
+              return tools;
             })}
           <span className="palette-hint">
             {running ? "執行中 · 元件編輯已鎖定" : "點選插入 · 拖曳至畫布"}

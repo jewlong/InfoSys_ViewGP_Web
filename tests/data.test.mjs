@@ -241,3 +241,47 @@ test("system variables binding, momentary action, and previous screen navigation
   assert.equal(bindingProblems(prevBtn, p).length, 0);
   assert.deepEqual(evaluateAction(prevBtn, p, {}), { actionType: "previousScreen" });
 });
+
+test("touch experience: Jog (momentary) positive/negative logic and keypad validation", () => {
+  const p = fixture();
+  // Positive logic Jog: press writes true, release restores false
+  const jogPositive = {
+    ...makeElement("button"),
+    name: "JOG正轉",
+    variableId: "b",
+    action: "momentary",
+    actionValue: "true",
+  };
+  assert.deepEqual(evaluateAction(jogPositive, p, { b: false }), {
+    variableId: "b",
+    value: true,
+  });
+
+  // Negative logic Jog (normally closed): press writes false, release restores true
+  const jogNegative = {
+    ...makeElement("button"),
+    name: "JOG停止",
+    variableId: "b",
+    action: "momentary",
+    actionValue: "false",
+  };
+  assert.deepEqual(evaluateAction(jogNegative, p, { b: true }), {
+    variableId: "b",
+    value: false,
+  });
+
+  // Numeric input element bounds and step verification for keypad
+  const inputElem = {
+    ...makeElement("input"),
+    name: "速度設定",
+    variableId: "v",
+    inputMin: 10,
+    inputMax: 100,
+    inputStep: 5,
+  };
+  assert.equal(inputError(inputElem, "25"), undefined);
+  assert.equal(inputError(inputElem, "5"), "數值不可小於 10");
+  assert.equal(inputError(inputElem, "105"), "數值不可大於 100");
+  assert.equal(inputError(inputElem, "23"), "請依 5 的步距輸入（起點 10）");
+});
+

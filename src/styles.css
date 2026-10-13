@@ -1544,9 +1544,12 @@ kbd {
   background: var(--button-hover-background);
   color: var(--button-hover-color);
 }
-.runtime-button[data-running="true"]:active:not(:disabled) {
+.runtime-button[data-running="true"]:active:not(:disabled),
+.runtime-button[data-running="true"][data-pressed="true"]:not(:disabled) {
   background: var(--button-pressed-background);
   color: var(--button-pressed-color);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+  transform: translateY(1px);
 }
 .runtime-button[data-running="true"]:disabled {
   background: var(--button-disabled-background);
@@ -1560,6 +1563,37 @@ kbd {
 
 .numeric-input-widget {
   position: relative;
+}
+.numeric-input-field-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.runtime-keypad-trigger-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+  z-index: 2;
+}
+.runtime-keypad-trigger-btn:hover {
+  background: #3b82f6;
+  border-color: #60a5fa;
+  color: #ffffff;
 }
 .runtime-input[aria-invalid="true"] {
   outline: 2px solid #ef4444;
@@ -2081,3 +2115,221 @@ kbd {
     flex-wrap: wrap;
   }
 }
+
+/* Touch Keypad Dialog */
+.keypad-backdrop {
+  z-index: 1200;
+}
+.keypad-modal {
+  width: 360px;
+  max-width: 95vw;
+  background: #0f172a;
+  border: 1px solid #334155;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.keypad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+.keypad-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.keypad-title-icon {
+  color: #38bdf8;
+}
+.keypad-tag-badge {
+  font-size: 11px;
+  background: #334155;
+  color: #93c5fd;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.keypad-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+.keypad-close-btn:hover {
+  background: #334155;
+  color: #f1f5f9;
+}
+.keypad-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.keypad-display-wrapper {
+  background: #090e17;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+.keypad-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+}
+.keypad-meta-target {
+  font-weight: 500;
+  color: #94a3b8;
+}
+.keypad-meta-limits {
+  color: #38bdf8;
+}
+.keypad-lcd-screen {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  min-height: 40px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 32px;
+  font-weight: bold;
+  color: #f8fafc;
+  letter-spacing: 1px;
+}
+.keypad-lcd-cursor {
+  animation: keypad-blink 1s step-start infinite;
+  color: #38bdf8;
+  margin-left: 2px;
+}
+@keyframes keypad-blink {
+  50% { opacity: 0; }
+}
+.keypad-error-banner {
+  background: rgba(220, 38, 38, 0.2);
+  border: 1px solid #dc2626;
+  color: #fca5a5;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.keypad-quick-bar {
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+.keypad-quick-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.keypad-quick-btn:hover {
+  background: #334155;
+  color: #38bdf8;
+  border-color: #475569;
+}
+.keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.keypad-btn {
+  height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  transition: background 0.1s ease, transform 0.05s ease;
+  border: 1px solid transparent;
+}
+.keypad-btn:active {
+  transform: scale(0.97);
+}
+.keypad-btn.num {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+.keypad-btn.num:hover {
+  background: #334155;
+}
+.keypad-btn.num:active {
+  background: #0f172a;
+}
+.keypad-btn.fn {
+  background: #243048;
+  border-color: #3b4963;
+  color: #cbd5e1;
+  font-size: 14px;
+}
+.keypad-btn.fn:hover {
+  background: #334155;
+  color: #f8fafc;
+}
+.keypad-btn.fn span {
+  font-size: 11px;
+}
+.keypad-btn.action-enter {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+  gap: 2px;
+}
+.keypad-btn.action-enter:hover {
+  background: #1d4ed8;
+}
+.keypad-btn.action-enter span {
+  font-size: 11px;
+  font-weight: bold;
+}
+.keypad-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #1e293b;
+  border-top: 1px solid #334155;
+}
+.keypad-hint {
+  font-size: 11px;
+  color: #64748b;
+}
+.keypad-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.keypad-cancel-btn {
+  padding: 6px 12px;
+}
+.keypad-confirm-btn {
+  padding: 6px 16px;
+}
+

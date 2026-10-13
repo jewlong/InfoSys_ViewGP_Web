@@ -1,5 +1,6 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { borderStyle, widgetStyle, type WidgetProps } from "./types";
+
 export function ButtonWidget({
   element,
   running,
@@ -8,10 +9,15 @@ export function ButtonWidget({
   onMomentary,
 }: WidgetProps) {
   const isMomentary = element.action === "momentary";
+  const [pressed, setPressed] = useState(false);
+
   const style = {
     ...widgetStyle(element),
     ...borderStyle(element, 0, 8),
     color: undefined,
+    userSelect: "none",
+    WebkitUserSelect: "none",
+    touchAction: isMomentary ? "none" : undefined,
     "--button-background": element.background,
     "--button-color": element.color,
     "--button-hover-background":
@@ -25,29 +31,48 @@ export function ButtonWidget({
     "--button-disabled-color": element.buttonDisabledColor ?? "#94a3b8",
   } as CSSProperties;
 
-  const handlePointerDown = () => {
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (!running || disabled) return;
-    if (isMomentary) onMomentary?.(true);
+    if (isMomentary) {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {}
+      setPressed(true);
+      onMomentary?.(true);
+    }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (!running || disabled) return;
-    if (isMomentary) onMomentary?.(false);
+    if (isMomentary) {
+      try {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      } catch {}
+      setPressed(false);
+      onMomentary?.(false);
+    }
   };
 
   return (
     <button
       disabled={!running || disabled}
       data-running={running}
+      data-pressed={isMomentary && pressed ? "true" : undefined}
       className="runtime-button"
       style={style}
       onClick={isMomentary ? undefined : onAction}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      onLostPointerCapture={handlePointerUp}
+      onContextMenu={(e) => {
+        if (running && isMomentary) e.preventDefault();
+      }}
     >
       {element.text}
     </button>
   );
 }
+

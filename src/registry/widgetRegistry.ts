@@ -98,9 +98,11 @@ export function groupedWidgets(search = "") {
       kinds: (Object.keys(widgetRegistry) as Kind[]).filter(
         (kind) =>
           widgetRegistry[kind].category === category.id &&
-          `${category.label} ${widgetRegistry[kind].label} ${kind}`
+          (`${category.label} ${widgetRegistry[kind].label} ${kind}`
             .toLocaleLowerCase()
-            .includes(query),
+            .includes(query) ||
+            (kind === "button" &&
+              ("jog 點動".includes(query) || query.includes("jog") || query.includes("點動")))),
       ),
     }))
     .filter((group) => group.kinds.length > 0);

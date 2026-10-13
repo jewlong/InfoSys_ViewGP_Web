@@ -133,9 +133,22 @@ export function ElementDataFields() {
             <p className="appearance-hint">正數增加，負數減少。</p>
           )}
           {e.kind === "button" && e.action === "momentary" && (
-            <p className="appearance-hint">
-              滑鼠或手指按下時輸出 TRUE，放開時自動復歸 FALSE。
-            </p>
+            <>
+              <Field label="動作模式">
+                <select
+                  value={e.actionValue === "false" ? "false" : "true"}
+                  onChange={(event) =>
+                    patch({ actionValue: event.target.value })
+                  }
+                >
+                  <option value="true">正邏輯 (按下 ON／放開 OFF)</option>
+                  <option value="false">負邏輯 (按下 OFF／放開 ON)</option>
+                </select>
+              </Field>
+              <p className="appearance-hint">
+                點動 (JOG)：按住時輸出指定狀態，放開時自動復歸；支援長按指標擷取防滑與失焦安全保護。
+              </p>
+            </>
           )}
           {e.kind === "button" && e.action === "previousScreen" && (
             <p className="appearance-hint">

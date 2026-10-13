@@ -10,6 +10,7 @@ import {
   Settings2,
   Trash2,
   Variable as VariableIcon,
+  HandMetal,
 } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
 import { labels } from "../../model";
@@ -130,9 +131,9 @@ export function LeftPanel() {
                   id={`widget-group-${group.id}`}
                   hidden={collapsed.includes(group.id)}
                 >
-                  {group.kinds.map((k) => {
+                  {group.kinds.flatMap((k) => {
                     const Icon = widgetRegistry[k].icon;
-                    return (
+                    const items = [
                       <button
                         key={k}
                         disabled={running}
@@ -144,8 +145,36 @@ export function LeftPanel() {
                       >
                         <Icon size={21} strokeWidth={1.5} />
                         <span>{labels[k]}</span>
-                      </button>
-                    );
+                      </button>,
+                    ];
+                    if (
+                      k === "button" &&
+                      (!search ||
+                        "jog 點動 點動按鈕".includes(search.toLowerCase()) ||
+                        search.toLowerCase().includes("jog") ||
+                        search.toLowerCase().includes("點動"))
+                    ) {
+                      items.push(
+                        <button
+                          key="jog-library-item"
+                          disabled={running}
+                          title="點動按鈕 (JOG - 按住 ON／放開 OFF)"
+                          onClick={() =>
+                            addElement("button", undefined, undefined, {
+                              name: "點動按鈕",
+                              text: "JOG 點動",
+                              action: "momentary",
+                              actionValue: "true",
+                              background: "#0284c7",
+                            })
+                          }
+                        >
+                          <HandMetal size={21} strokeWidth={1.5} />
+                          <span>點動按鈕</span>
+                        </button>,
+                      );
+                    }
+                    return items;
                   })}
                 </div>
               </section>

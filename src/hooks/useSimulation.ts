@@ -34,11 +34,13 @@ export function useSimulation({
   const [popupIds, updatePopupIds] = useState<string[]>([]);
   const popupRef = useRef<string[]>([]);
   const [screenHistory, setScreenHistory] = useState<string[]>([]);
-  const pressed = useRef(new Map<string, string>());
+  const pressed = useRef<
+    Map<string, { variableId: string; releaseValue: boolean }>
+  >(new Map());
   function releaseMomentary() {
-    const ids = [...pressed.current.values()];
+    const items = [...pressed.current.values()];
     pressed.current.clear();
-    for (const id of ids) writeValue(id, false);
+    for (const item of items) writeValue(item.variableId, item.releaseValue);
   }
   function setPopups(ids: string[]) {
     releaseMomentary();
@@ -209,10 +211,10 @@ export function useSimulation({
   }
   function momentaryAction(e: Element, down: boolean, sourceScreenId: string) {
     if (!down) {
-      const id = pressed.current.get(e.id);
-      if (id) {
+      const item = pressed.current.get(e.id);
+      if (item) {
         pressed.current.delete(e.id);
-        writeValue(id, false);
+        writeValue(item.variableId, item.releaseValue);
       }
       return;
     }
@@ -225,8 +227,9 @@ export function useSimulation({
       return;
     const result = evaluateAction(e, project, values);
     if (!("variableId" in result) || typeof result.value !== "boolean") return;
-    pressed.current.set(e.id, result.variableId);
-    writeValue(result.variableId, true);
+    const releaseValue = !result.value;
+    pressed.current.set(e.id, { variableId: result.variableId, releaseValue });
+    writeValue(result.variableId, result.value);
   }
   function input(
     e: Element,

@@ -186,13 +186,19 @@ export function useEditorCore() {
     setValues(initialValues(p));
     setDialog(null);
   }
-  function addElement(kind: Kind, x?: number, y?: number) {
-    const e = widgetRegistry[kind].create(
+  function addElement(
+    kind: Kind,
+    x?: number,
+    y?: number,
+    template?: Partial<Element>,
+  ) {
+    const base = widgetRegistry[kind].create(
       x ??
         Math.min(120 + (screen.elements.length % 5) * 20, screen.width - 160),
       y ??
         Math.min(120 + (screen.elements.length % 5) * 20, screen.height - 80),
     );
+    const e = template ? { ...base, ...template } : base;
     if (
       [
         "number",
