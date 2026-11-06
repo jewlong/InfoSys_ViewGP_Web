@@ -285,3 +285,30 @@ test("touch experience: Jog (momentary) positive/negative logic and keypad valid
   assert.equal(inputError(inputElem, "23"), "請依 5 的步距輸入（起點 10）");
 });
 
+test("LVGL editing widgets (slider, arc, spinbox, dropdown) enforce numeric variable bindings and range rules", () => {
+  const p = fixture();
+  for (const kind of ["slider", "arc", "spinbox", "dropdown"]) {
+    const elem = makeElement(kind);
+    assert.deepEqual(bindingTypes(elem), ["number"]);
+    assert.ok(bindingProblems(elem, p).some((m) => m.includes("未綁定")));
+    assert.deepEqual(bindingProblems({ ...elem, variableId: "n" }, p), []);
+    assert.ok(
+      bindingProblems({ ...elem, variableId: "b" }, p).some((m) =>
+        m.includes("類型不符"),
+      ),
+    );
+  }
+  const badSpinbox = {
+    ...makeElement("spinbox"),
+    variableId: "n",
+    inputMin: 50,
+    inputMax: 10,
+  };
+  assert.ok(
+    bindingProblems(badSpinbox, p).some((m) =>
+      m.includes("最小值不可大於最大值"),
+    ),
+  );
+});
+
+

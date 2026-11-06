@@ -217,14 +217,30 @@ export function CanvasEditor() {
                             : "move",
                         pointerEvents:
                           running &&
-                          !["button", "input", "switch"].includes(e.kind) &&
+                          ![
+                            "button",
+                            "input",
+                            "switch",
+                            "slider",
+                            "arc",
+                            "spinbox",
+                            "dropdown",
+                          ].includes(e.kind) &&
                           e.enabledId &&
                           !values[e.enabledId]
                             ? "none"
                             : undefined,
                         opacity:
                           running &&
-                          !["button", "input", "switch"].includes(e.kind) &&
+                          ![
+                            "button",
+                            "input",
+                            "switch",
+                            "slider",
+                            "arc",
+                            "spinbox",
+                            "dropdown",
+                          ].includes(e.kind) &&
                           e.enabledId &&
                           !values[e.enabledId]
                             ? 0.5

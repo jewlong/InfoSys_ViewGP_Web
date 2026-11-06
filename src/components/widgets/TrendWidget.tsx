@@ -1,6 +1,8 @@
 import { scaleRatio } from "../../services/advancedRules";
 import { formatNumber } from "../../services/numberFormat";
+import { LvglSurface, drawLvglRoundedPart } from "./LvglCanvas";
 import { widgetStyle, type WidgetProps } from "./types";
+
 export function TrendWidget({
   element: e,
   values,
@@ -26,9 +28,23 @@ export function TrendWidget({
   return (
     <div
       className="advanced-widget trend-widget"
-      style={{ ...widgetStyle(e), background: e.background }}
+      data-lvgl-class="lv_chart"
+      style={{ ...widgetStyle(e), background: e.background, position: "relative" }}
     >
-      <svg viewBox="0 0 400 200" role="img" aria-label={`${e.text}趨勢`}>
+      <LvglSurface
+        element={e}
+        lvglClass="lv_chart"
+        deps={[data.length, first, last, min, max]}
+        draw={(ctx, w, h) => {
+          drawLvglRoundedPart(ctx, 0, 0, w, h, 8, e.background || "#18263b");
+        }}
+      />
+      <svg
+        viewBox="0 0 400 200"
+        role="img"
+        aria-label={`${e.text}趨勢`}
+        style={{ position: "relative", zIndex: 1 }}
+      >
         <text x="12" y="22" fill={e.color}>
           {e.text}
         </text>

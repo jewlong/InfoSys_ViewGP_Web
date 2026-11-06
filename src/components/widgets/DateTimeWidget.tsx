@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { LvglSurface, drawLvglRoundedPart } from "./LvglCanvas";
 import type { WidgetProps } from "./types";
 import { borderStyle } from "./types";
 
@@ -57,9 +58,11 @@ export function DateTimeWidget({ element, values, running }: WidgetProps) {
 
   return (
     <div
+      data-lvgl-class="lv_label"
       style={{
         width: "100%",
         height: "100%",
+        position: "relative",
         display: "flex",
         alignItems:
           vertical === "top"
@@ -87,7 +90,23 @@ export function DateTimeWidget({ element, values, running }: WidgetProps) {
         ...borderStyle(element, 1, element.borderRadius ?? 4),
       }}
     >
-      <span>{textToDisplay}</span>
+      <LvglSurface
+        element={element}
+        lvglClass="lv_label"
+        deps={[textToDisplay]}
+        draw={(ctx, w, h) => {
+          drawLvglRoundedPart(
+            ctx,
+            0,
+            0,
+            w,
+            h,
+            element.borderRadius ?? 4,
+            element.background,
+          );
+        }}
+      />
+      <span style={{ position: "relative", zIndex: 1 }}>{textToDisplay}</span>
     </div>
   );
 }

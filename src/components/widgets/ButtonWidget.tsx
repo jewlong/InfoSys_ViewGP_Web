@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { LvglSurface } from "./LvglCanvas";
 import { borderStyle, widgetStyle, type WidgetProps } from "./types";
 
 export function ButtonWidget({
@@ -14,6 +15,8 @@ export function ButtonWidget({
   const style = {
     ...widgetStyle(element),
     ...borderStyle(element, 0, 8),
+    position: "relative",
+    overflow: "hidden",
     color: undefined,
     userSelect: "none",
     WebkitUserSelect: "none",
@@ -60,6 +63,7 @@ export function ButtonWidget({
       disabled={!running || disabled}
       data-running={running}
       data-pressed={isMomentary && pressed ? "true" : undefined}
+      data-lvgl-class="lv_button"
       className="runtime-button"
       style={style}
       onClick={isMomentary ? undefined : onAction}
@@ -71,8 +75,13 @@ export function ButtonWidget({
         if (running && isMomentary) e.preventDefault();
       }}
     >
-      {element.text}
+      <LvglSurface
+        element={element}
+        lvglClass="lv_button"
+        deps={[pressed, disabled]}
+        draw={() => {}}
+      />
+      <span style={{ position: "relative", zIndex: 1 }}>{element.text}</span>
     </button>
   );
 }
-

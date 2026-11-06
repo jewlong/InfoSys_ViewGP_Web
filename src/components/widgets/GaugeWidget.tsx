@@ -1,6 +1,8 @@
 import { scaleRatio, valueColor } from "../../services/advancedRules";
 import { formatNumber } from "../../services/numberFormat";
+import { LvglSurface } from "./LvglCanvas";
 import { widgetStyle, type WidgetProps } from "./types";
+
 export function GaugeWidget({ element: e, values }: WidgetProps) {
   const value = values[e.variableId ?? ""],
     ratio = scaleRatio(value, e);
@@ -8,12 +10,38 @@ export function GaugeWidget({ element: e, values }: WidgetProps) {
   return (
     <div
       className="advanced-widget gauge-widget"
-      style={{ ...widgetStyle(e), background: e.background }}
+      data-lvgl-class="lv_scale"
+      style={{ ...widgetStyle(e), background: e.background, position: "relative" }}
     >
+      <LvglSurface
+        element={e}
+        lvglClass="lv_scale"
+        deps={[value, ratio, e.warningThreshold, e.criticalThreshold, e.showScale]}
+        draw={(ctx, w, h) => {
+          // LVGL v9 lv_scale subtle radial ticks under the SVG gauge layer
+          const cx = w / 2;
+          const cy = h * (120 / 180);
+          const rOuter = Math.min(w / 240, h / 180) * 86;
+          const ticks = 20;
+          ctx.strokeStyle = e.trackColor ?? "#334155";
+          for (let i = 0; i <= ticks; i++) {
+            const tRatio = i / ticks;
+            const a = Math.PI * (1 + tRatio);
+            const isMajor = i % 5 === 0;
+            const rInner = rOuter - (isMajor ? 14 : 9);
+            ctx.beginPath();
+            ctx.lineWidth = isMajor ? 2 : 1;
+            ctx.moveTo(cx + Math.cos(a) * rInner, cy + Math.sin(a) * rInner);
+            ctx.lineTo(cx + Math.cos(a) * (rOuter - 6), cy + Math.sin(a) * (rOuter - 6));
+            ctx.stroke();
+          }
+        }}
+      />
       <svg
         viewBox="0 0 240 180"
         role="img"
         aria-label={`${e.text}：${formatNumber(value, e)}`}
+        style={{ position: "relative", zIndex: 1 }}
       >
         <text x="120" y="22" textAnchor="middle" fill={e.color}>
           {e.text}

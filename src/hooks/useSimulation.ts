@@ -129,8 +129,9 @@ export function useSimulation({
   function runtimeElementDisabled(e: Element) {
     const v = project.variables.find((v) => v.id === e.variableId);
     const writes =
-      e.kind === "input" ||
-      e.kind === "switch" ||
+      ["input", "switch", "slider", "arc", "spinbox", "dropdown"].includes(
+        e.kind,
+      ) ||
       (e.kind === "button" &&
         ![
           "screen",

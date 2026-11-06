@@ -20,7 +20,11 @@ export type Kind =
   | "datetime"
   | "multistate"
   | "scale"
-  | "table";
+  | "table"
+  | "slider"
+  | "arc"
+  | "spinbox"
+  | "dropdown";
 export type Action =
   | "toggle"
   | "set"
@@ -233,6 +237,10 @@ export const labels: Record<Kind, string> = {
   multistate: "多狀態指示燈",
   scale: "刻度",
   table: "表格",
+  slider: "滑桿",
+  arc: "圓弧旋鈕",
+  spinbox: "微調輸入",
+  dropdown: "下拉選單",
 };
 export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
   id: uid(),
@@ -253,25 +261,32 @@ export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
               ? 240
               : kind === "datetime"
                 ? 220
-                : kind === "line"
-                  ? 160
-                  : kind === "indicator" || kind === "multistate"
-                    ? 44
-                    : kind === "circle"
-                      ? 80
-                      : 160,
+                : kind === "slider"
+                  ? 200
+                  : kind === "spinbox" || kind === "dropdown"
+                    ? 180
+                    : kind === "line" || kind === "arc"
+                      ? 160
+                      : kind === "indicator" || kind === "multistate"
+                        ? 44
+                        : kind === "circle"
+                          ? 80
+                          : 160,
   height:
     kind === "alarm"
       ? 220
       : kind === "trend"
         ? 200
-        : kind === "table"
+        : kind === "table" || kind === "gauge"
           ? 180
-          : kind === "gauge"
-            ? 180
+          : kind === "arc"
+            ? 160
             : kind === "bar"
               ? 100
-              : kind === "scale" || kind === "datetime"
+              : kind === "scale" ||
+                  kind === "datetime" ||
+                  kind === "slider" ||
+                  kind === "dropdown"
                 ? 44
                 : kind === "line"
                   ? 4
@@ -302,7 +317,7 @@ export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
   actionValue: "1",
   locked: false,
   visible: true,
-  ...(["gauge", "bar", "trend"].includes(kind)
+  ...(["gauge", "bar", "trend", "slider", "arc"].includes(kind)
     ? {
         scaleMin: 0,
         scaleMax: 100,
@@ -310,7 +325,22 @@ export const makeElement = (kind: Kind, x = 120, y = 120): Element => ({
         trackColor: "#334155",
       }
     : {}),
-  ...(kind === "bar" ? { orientation: "horizontal" as const } : {}),
+  ...(["bar", "slider"].includes(kind)
+    ? { orientation: "horizontal" as const }
+    : {}),
+  ...(["slider", "arc"].includes(kind) ? { showValue: true } : {}),
+  ...(kind === "spinbox"
+    ? { inputMin: 0, inputMax: 100, inputStep: 1, decimals: 0 }
+    : {}),
+  ...(kind === "dropdown"
+    ? {
+        multistateItems: [
+          { value: 0, label: "自動模式", color: "#38bdf8", textColor: "#ffffff" },
+          { value: 1, label: "手動模式", color: "#22c55e", textColor: "#ffffff" },
+          { value: 2, label: "維護模式", color: "#f59e0b", textColor: "#ffffff" },
+        ],
+      }
+    : {}),
   ...(kind === "trend" ? { sampleInterval: 1000, historyPoints: 120 } : {}),
   ...(kind === "alarm" ? { alarmRules: [], alarmMaxRows: 20 } : {}),
   ...(kind === "datetime" ? { dateTimeFormat: "YYYY/MM/DD HH:mm:ss" } : {}),

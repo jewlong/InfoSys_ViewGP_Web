@@ -1,4 +1,6 @@
+import { LvglSurface } from "./LvglCanvas";
 import { widgetStyle, type WidgetProps } from "./types";
+
 export function TextWidget({ element, values }: WidgetProps) {
   const content = element.variableId
     ? String(values[element.variableId] ?? element.text)
@@ -6,8 +8,10 @@ export function TextWidget({ element, values }: WidgetProps) {
   return (
     <div
       className="visual-text"
+      data-lvgl-class="lv_label"
       style={{
         ...widgetStyle(element),
+        position: "relative",
         fontFamily: element.fontFamily,
         fontWeight: element.fontWeight ?? "normal",
         fontStyle: element.italic ? "italic" : "normal",
@@ -22,7 +26,20 @@ export function TextWidget({ element, values }: WidgetProps) {
         background: element.textBackground ? element.background : "transparent",
       }}
     >
-      <span style={{ width: "100%", minWidth: 0 }}>{content}</span>
+      <LvglSurface
+        element={element}
+        lvglClass="lv_label"
+        deps={[content, element.textBackground]}
+        draw={(ctx, w, h) => {
+          if (element.textBackground) {
+            ctx.fillStyle = element.background;
+            ctx.fillRect(0, 0, w, h);
+          }
+        }}
+      />
+      <span style={{ width: "100%", minWidth: 0, position: "relative", zIndex: 1 }}>
+        {content}
+      </span>
     </div>
   );
 }

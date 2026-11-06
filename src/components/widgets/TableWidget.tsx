@@ -1,3 +1,4 @@
+import { LvglSurface, drawLvglRoundedPart } from "./LvglCanvas";
 import type { WidgetProps } from "./types";
 
 export function TableWidget({ element }: WidgetProps) {
@@ -11,6 +12,7 @@ export function TableWidget({ element }: WidgetProps) {
 
   return (
     <div
+      data-lvgl-class="lv_table"
       style={{
         width: "100%",
         height: "100%",
@@ -22,12 +24,22 @@ export function TableWidget({ element }: WidgetProps) {
         position: "relative",
       }}
     >
+      <LvglSurface
+        element={element}
+        lvglClass="lv_table"
+        deps={[cols, rows, gridColor, hasDiagonal]}
+        draw={(ctx, w, h) => {
+          drawLvglRoundedPart(ctx, 0, 0, w, h, element.borderRadius ?? 2, bg);
+        }}
+      />
       <table
         style={{
           width: "100%",
           height: "100%",
           borderCollapse: "collapse",
           tableLayout: "fixed",
+          position: "relative",
+          zIndex: 1,
         }}
       >
         <tbody>

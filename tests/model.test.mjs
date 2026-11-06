@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { demoProject, makeElement, validateProject } from "../src/model.ts";
+import {
+  getLvglWasm,
+  packRgbaLe,
+} from "../src/services/lvglWasmRuntime.ts";
 test("demo round-trips through versioned JSON schema", () =>
   assert.ok(validateProject(JSON.parse(JSON.stringify(demoProject())))));
 test("rejects malformed imports and unsupported schema versions", () => {
@@ -123,4 +127,26 @@ test("Priority 1 widgets (datetime, multistate, scale, table) round-trip and val
   const q3 = structuredClone(p);
   q3.screens[0].elements.find((e) => e.kind === "multistate").multistateItems[0].color = "not-color";
   assert.equal(validateProject(q3), false);
+});
+
+test("LVGL v9 widgets (slider, arc, spinbox, dropdown) and WASM runtime instantiate and validate", () => {
+  const wasm = getLvglWasm();
+  assert.equal(wasm.lv_wasm_get_version(), 90200);
+  const fbPtr = wasm.lv_wasm_get_fb_ptr();
+  assert.equal(fbPtr, 1024);
+
+  wasm.lv_wasm_begin_frame(16, 16, packRgbaLe(10, 20, 30, 255));
+  wasm.lv_wasm_fill_rect(16, 16, 2, 2, 4, 4, packRgbaLe(255, 128, 64, 255));
+  const heap = new Uint8Array(wasm.memory.buffer, fbPtr, 16 * 16 * 4);
+  assert.deepEqual(Array.from(heap.slice(0, 4)), [10, 20, 30, 255]);
+  const pixel2x2 = (2 * 16 + 2) * 4;
+  assert.deepEqual(Array.from(heap.slice(pixel2x2, pixel2x2 + 4)), [255, 128, 64, 255]);
+
+  const p = demoProject();
+  const slider = makeElement("slider");
+  const arc = makeElement("arc");
+  const spinbox = makeElement("spinbox");
+  const dropdown = makeElement("dropdown");
+  p.screens[0].elements.push(slider, arc, spinbox, dropdown);
+  assert.ok(validateProject(JSON.parse(JSON.stringify(p))));
 });

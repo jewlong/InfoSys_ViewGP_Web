@@ -1,3 +1,4 @@
+import { LvglSurface, drawLvglRoundedPart } from "./LvglCanvas";
 import type { WidgetProps } from "./types";
 import { borderStyle } from "./types";
 
@@ -7,7 +8,9 @@ export function MultistateWidget({ element, values }: WidgetProps) {
     typeof raw === "number"
       ? Math.round(raw)
       : typeof raw === "boolean"
-        ? (raw ? 1 : 0)
+        ? raw
+          ? 1
+          : 0
         : 0;
 
   const items = element.multistateItems ?? [
@@ -18,19 +21,25 @@ export function MultistateWidget({ element, values }: WidgetProps) {
 
   const matched =
     items.find((item) => item.value === numericVal) ??
-    items[0] ?? { value: 0, label: element.text || "狀態", color: element.background, textColor: element.color };
+    items[0] ?? {
+      value: 0,
+      label: element.text || "狀態",
+      color: element.background,
+      textColor: element.color,
+    };
 
   const bg = matched.color || element.background;
   const textColor = matched.textColor || element.color || "#ffffff";
   const label = matched.label || element.text;
-
   const radius = element.borderRadius ?? 22;
 
   return (
     <div
+      data-lvgl-class="lv_led"
       style={{
         width: "100%",
         height: "100%",
+        position: "relative",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -50,7 +59,17 @@ export function MultistateWidget({ element, values }: WidgetProps) {
         ...borderStyle(element, 2, radius),
       }}
     >
-      <span style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>{label}</span>
+      <LvglSurface
+        element={element}
+        lvglClass="lv_led"
+        deps={[bg, radius]}
+        draw={(ctx, w, h) => {
+          drawLvglRoundedPart(ctx, 0, 0, w, h, radius, bg);
+        }}
+      />
+      <span style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)", position: "relative", zIndex: 1 }}>
+        {label}
+      </span>
     </div>
   );
 }

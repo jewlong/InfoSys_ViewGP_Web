@@ -4,7 +4,18 @@ import { getSystemVariable, isSystemVariable } from "./systemVariables.ts";
 
 export function bindingTypes(e: Element): Variable["type"][] {
   if (
-    ["number", "input", "gauge", "bar", "trend", "multistate"].includes(e.kind)
+    [
+      "number",
+      "input",
+      "gauge",
+      "bar",
+      "trend",
+      "multistate",
+      "slider",
+      "arc",
+      "spinbox",
+      "dropdown",
+    ].includes(e.kind)
   )
     return ["number"];
   if (["indicator", "switch"].includes(e.kind)) return ["boolean"];
@@ -88,6 +99,10 @@ export function bindingProblems(e: Element, project: Project): string[] {
       "bar",
       "trend",
       "multistate",
+      "slider",
+      "arc",
+      "spinbox",
+      "dropdown",
     ].includes(e.kind) ||
     (e.kind === "button" && !isNavigationAction);
 
@@ -148,7 +163,7 @@ export function bindingProblems(e: Element, project: Project): string[] {
         errors.push("布林設定值需為 true 或 false");
     }
   }
-  if (e.kind === "input") {
+  if (e.kind === "input" || e.kind === "spinbox") {
     if (
       e.inputMin !== undefined &&
       e.inputMax !== undefined &&

@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { Calculator } from "lucide-react";
+import { LvglSurface, drawLvglRoundedPart } from "./LvglCanvas";
 import { widgetStyle, type WidgetProps } from "./types";
 import { KeypadDialog } from "../dialogs/KeypadDialog";
 
@@ -38,8 +39,28 @@ export function NumberInputWidget({
   }
 
   return (
-    <div className="numeric-input-widget" style={widgetStyle(element)}>
-      <div className="numeric-input-field-wrap">
+    <div
+      className="numeric-input-widget"
+      data-lvgl-class="lv_textarea"
+      style={{ ...widgetStyle(element), position: "relative" }}
+    >
+      <LvglSurface
+        element={element}
+        lvglClass="lv_textarea"
+        deps={[draft, disabled]}
+        draw={(ctx, w, h) => {
+          drawLvglRoundedPart(
+            ctx,
+            0,
+            0,
+            w,
+            h,
+            element.borderRadius ?? 6,
+            element.background || "#18263b",
+          );
+        }}
+      />
+      <div className="numeric-input-field-wrap" style={{ position: "relative", zIndex: 1 }}>
         <input
           aria-label={element.name}
           aria-invalid={Boolean(error)}
@@ -105,4 +126,3 @@ export function NumberInputWidget({
     </div>
   );
 }
-

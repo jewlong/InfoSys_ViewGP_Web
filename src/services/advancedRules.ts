@@ -36,7 +36,7 @@ export function alarmRuleProblems(rule: AlarmRule, project: Project): string[] {
 }
 export function advancedProblems(e: Element, project: Project): string[] {
   const problems: string[] = [];
-  if (["gauge", "bar", "trend"].includes(e.kind)) {
+  if (["gauge", "bar", "trend", "slider", "arc"].includes(e.kind)) {
     const min = e.scaleMin ?? 0,
       max = e.scaleMax ?? 100;
     if (max <= min || !Number.isFinite(max - min))

@@ -10,7 +10,8 @@ import {
 } from "../ui/Controls";
 export function ElementAdvancedFields() {
   const { current: e, project, patch } = useEditorContext();
-  if (!e || !["gauge", "bar", "trend", "alarm"].includes(e.kind)) return null;
+  if (!e || !["gauge", "bar", "trend", "alarm", "slider", "arc"].includes(e.kind))
+    return null;
   const problems = advancedProblems(e, project);
   function numeric(
     key: "scaleMin" | "scaleMax" | "warningThreshold" | "criticalThreshold",
@@ -122,7 +123,7 @@ export function ElementAdvancedFields() {
               </p>
             </>
           )}
-          {e.kind === "bar" && (
+          {["bar", "slider"].includes(e.kind) && (
             <Field label="長條方向">
               <select
                 value={e.orientation ?? "horizontal"}

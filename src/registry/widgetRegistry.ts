@@ -6,6 +6,10 @@ import { DateTimeWidget } from "../components/widgets/DateTimeWidget";
 import { MultistateWidget } from "../components/widgets/MultistateWidget";
 import { ScaleWidget } from "../components/widgets/ScaleWidget";
 import { TableWidget } from "../components/widgets/TableWidget";
+import { SliderWidget } from "../components/widgets/SliderWidget";
+import { ArcWidget } from "../components/widgets/ArcWidget";
+import { SpinboxWidget } from "../components/widgets/SpinboxWidget";
+import { DropdownWidget } from "../components/widgets/DropdownWidget";
 import {
   Activity,
   Gauge,
@@ -13,13 +17,17 @@ import {
   ChartLine,
   Bell,
   Circle,
+  CircleDot,
   Clock,
+  ChevronDown,
   Hash,
   Image,
   Layers,
   Minus,
   MousePointer2,
+  Plus,
   Ruler,
+  SlidersHorizontal,
   Square,
   Table as TableIcon,
   TextCursorInput,
@@ -88,6 +96,10 @@ export const widgetRegistry: Record<Kind, WidgetDefinition> = {
   multistate: define("multistate", Layers, MultistateWidget, "display"),
   scale: define("scale", Ruler, ScaleWidget, "static"),
   table: define("table", TableIcon, TableWidget, "static"),
+  slider: define("slider", SlidersHorizontal, SliderWidget, "editing"),
+  arc: define("arc", CircleDot, ArcWidget, "editing"),
+  spinbox: define("spinbox", Plus, SpinboxWidget, "editing"),
+  dropdown: define("dropdown", ChevronDown, DropdownWidget, "editing"),
 };
 
 export function groupedWidgets(search = "") {

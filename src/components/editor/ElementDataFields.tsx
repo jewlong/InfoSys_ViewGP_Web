@@ -240,8 +240,10 @@ export function ElementDataFields() {
         </PropertySection>
       )}
 
-      {e.kind === "multistate" && (
-        <PropertySection title="多狀態設定">
+      {(e.kind === "multistate" || e.kind === "dropdown") && (
+        <PropertySection
+          title={e.kind === "dropdown" ? "下拉選項設定" : "多狀態設定"}
+        >
           <div className="multistate-list">
             {(e.multistateItems ?? []).map((item, idx) => (
               <div
@@ -482,7 +484,15 @@ export function ElementDataFields() {
         </PropertySection>
       )}
 
-      {["number", "gauge", "bar", "trend"].includes(e.kind) && (
+      {[
+        "number",
+        "gauge",
+        "bar",
+        "trend",
+        "slider",
+        "arc",
+        "spinbox",
+      ].includes(e.kind) && (
         <PropertySection title="數值格式">
           <Field label="顯示格式">
             <select
@@ -564,32 +574,34 @@ export function ElementDataFields() {
         </PropertySection>
       )}
 
-      {e.kind === "input" && (
+      {["input", "spinbox", "slider", "arc"].includes(e.kind) && (
         <PropertySection title="輸入範圍">
-          <div className="property-grid">
-            <Field label="最小值">
-              <input
-                type="number"
-                step="any"
-                placeholder="不限制"
-                value={e.inputMin ?? ""}
-                onChange={(event) =>
-                  optionalNumber("inputMin", event.target.value)
-                }
-              />
-            </Field>
-            <Field label="最大值">
-              <input
-                type="number"
-                step="any"
-                placeholder="不限制"
-                value={e.inputMax ?? ""}
-                onChange={(event) =>
-                  optionalNumber("inputMax", event.target.value)
-                }
-              />
-            </Field>
-          </div>
+          {["input", "spinbox"].includes(e.kind) && (
+            <div className="property-grid">
+              <Field label="最小值">
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="不限制"
+                  value={e.inputMin ?? ""}
+                  onChange={(event) =>
+                    optionalNumber("inputMin", event.target.value)
+                  }
+                />
+              </Field>
+              <Field label="最大值">
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="不限制"
+                  value={e.inputMax ?? ""}
+                  onChange={(event) =>
+                    optionalNumber("inputMax", event.target.value)
+                  }
+                />
+              </Field>
+            </div>
+          )}
           <Field label="輸入步距">
             <input
               type="number"

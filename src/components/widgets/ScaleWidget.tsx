@@ -1,3 +1,4 @@
+import { LvglSurface } from "./LvglCanvas";
 import type { WidgetProps } from "./types";
 
 export function ScaleWidget({ element }: WidgetProps) {
@@ -10,7 +11,6 @@ export function ScaleWidget({ element }: WidgetProps) {
   const showLabels = element.scaleShowLabels ?? true;
   const tickColor = element.color || "#94a3b8";
 
-  // Total subdivisions = (majorTicksCount - 1) * (minorTicksCount + 1)
   const totalSteps = (majorTicksCount - 1) * (minorTicksCount + 1);
 
   const ticks: {
@@ -32,6 +32,7 @@ export function ScaleWidget({ element }: WidgetProps) {
 
   return (
     <div
+      data-lvgl-class="lv_scale"
       style={{
         width: "100%",
         height: "100%",
@@ -41,10 +42,37 @@ export function ScaleWidget({ element }: WidgetProps) {
         userSelect: "none",
       }}
     >
+      <LvglSurface
+        element={element}
+        lvglClass="lv_scale"
+        deps={[
+          isVertical,
+          majorTicksCount,
+          minorTicksCount,
+          minVal,
+          maxVal,
+          showAxis,
+          showLabels,
+        ]}
+        draw={(ctx, w, h) => {
+          ctx.strokeStyle = tickColor;
+          if (isVertical && showAxis) {
+            ctx.beginPath();
+            ctx.moveTo(28, 8);
+            ctx.lineTo(28, h * 0.92);
+            ctx.stroke();
+          } else if (!isVertical && showAxis) {
+            ctx.beginPath();
+            ctx.moveTo(8, 20);
+            ctx.lineTo(w * 0.96, 20);
+            ctx.stroke();
+          }
+        }}
+      />
       <svg
         width="100%"
         height="100%"
-        style={{ display: "block", overflow: "visible" }}
+        style={{ display: "block", overflow: "visible", position: "relative", zIndex: 1 }}
       >
         {isVertical ? (
           <>

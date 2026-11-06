@@ -209,6 +209,10 @@ export function useEditorCore() {
         "gauge",
         "bar",
         "trend",
+        "slider",
+        "arc",
+        "spinbox",
+        "dropdown",
       ].includes(kind)
     )
       e.variableId = project.variables.find((v) =>

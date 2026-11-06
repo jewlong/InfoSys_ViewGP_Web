@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { LvglSurface, drawLvglRoundedPart } from "./LvglCanvas";
 import { widgetStyle, type WidgetProps } from "./types";
+
 const severityLabels = { info: "資訊", warning: "警告", critical: "嚴重" };
+
 export function AlarmWidget({
   element: e,
   running,
@@ -15,9 +18,18 @@ export function AlarmWidget({
   return (
     <div
       className="advanced-widget alarm-widget"
-      style={{ ...widgetStyle(e), background: e.background }}
+      data-lvgl-class="lv_table"
+      style={{ ...widgetStyle(e), background: e.background, position: "relative" }}
     >
-      <div className="alarm-heading">
+      <LvglSurface
+        element={e}
+        lvglClass="lv_table"
+        deps={[rows.length, activeOnly]}
+        draw={(ctx, w, h) => {
+          drawLvglRoundedPart(ctx, 0, 0, w, h, 8, e.background || "#18263b");
+        }}
+      />
+      <div className="alarm-heading" style={{ position: "relative", zIndex: 1 }}>
         <span>{e.text}</span>
         <label>
           <input
@@ -30,7 +42,7 @@ export function AlarmWidget({
           只看發生中
         </label>
       </div>
-      <div className="alarm-scroll">
+      <div className="alarm-scroll" style={{ position: "relative", zIndex: 1 }}>
         <table>
           <thead>
             <tr>
@@ -92,7 +104,7 @@ export function AlarmWidget({
           </tbody>
         </table>
       </div>
-      <div className="alarm-summary">
+      <div className="alarm-summary" style={{ position: "relative", zIndex: 1 }}>
         {alarmEvents.filter((event) => event.clearedAt === undefined).length}{" "}
         項發生中 ·{" "}
         {
