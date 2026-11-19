@@ -5,6 +5,7 @@ import { VersionHistoryDialog } from "./VersionHistoryDialog";
 import { AlarmManagementDialog } from "./AlarmManagementDialog";
 import { ImageResourcesDialog } from "./ImageResourcesDialog";
 import { ElementPropertiesDialog } from "./ElementPropertiesDialog";
+import { PiZeroDeployDialog } from "./PiZeroDeployDialog";
 import { AlertCircle, Check, ChevronRight, FolderOpen, X } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
 import { type Variable } from "../../model";
@@ -35,6 +36,7 @@ export function ProjectDialogs() {
   if (dialog === "alarms") return <AlarmManagementDialog />;
   if (dialog === "assets") return <ImageResourcesDialog />;
   if (dialog === "element") return <ElementPropertiesDialog />;
+  if (dialog === "pizero") return <PiZeroDeployDialog />;
   return (
     dialog && (
       <div className="modal-backdrop" onClick={() => setDialog(null)}>

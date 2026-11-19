@@ -10,6 +10,7 @@ export type Dialog =
   | "variable"
   | "help"
   | "check"
+  | "pizero"
   | null;
 export type Notice = { text: string; error?: boolean };
 export type ProjectRow = {

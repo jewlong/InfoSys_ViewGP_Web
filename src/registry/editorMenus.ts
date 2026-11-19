@@ -74,6 +74,7 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
         disabled: running,
       },
       { label: "匯出專案", fn: exportProject },
+      { label: "匯出 / 部署至 Pi Zero…", fn: () => setDialog("pizero") },
       {
         label: "版本紀錄與還原",
         fn: () => setDialog("versions"),
