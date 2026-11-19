@@ -1,4 +1,31 @@
-import type { Project } from "../model";
+import type { Project } from "../model.ts";
+import { parentScreenId, screenElements } from "./screenRules.ts";
+
+export function prepareProjectForPiZero(project: Project): Project {
+  const hasInheritance = project.screens.some((s) => Boolean(parentScreenId(s)));
+  if (!hasInheritance) return project;
+  return {
+    ...project,
+    screens: project.screens.map((s, sIdx) => {
+      if (!parentScreenId(s)) return s;
+      const resolved = screenElements(project, s.id).map((entry, eIdx) =>
+        entry.ownerScreenId === s.id
+          ? entry.element
+          : {
+              ...entry.element,
+              id: `${entry.element.id}__i${sIdx}_${eIdx}`,
+            },
+      );
+      const { parentScreenId: _p, inheritsScreenId: _i, ...rest } = s;
+      void _p;
+      void _i;
+      return {
+        ...rest,
+        elements: resolved,
+      };
+    }),
+  };
+}
 
 export const PI_ZERO_LIMITS = {
   schemaVersion: 1,
@@ -44,7 +71,8 @@ export type PiZeroValidationReport = {
 
 const utf8Bytes = (s: string) => new TextEncoder().encode(s).length;
 
-export function validateForPiZero(project: Project): PiZeroValidationReport {
+export function validateForPiZero(rawProject: Project): PiZeroValidationReport {
+  const project = prepareProjectForPiZero(rawProject);
   const errors: PiZeroIssue[] = [];
   const warnings: PiZeroIssue[] = [];
   const jsonText = JSON.stringify(project, null, 2);
@@ -258,7 +286,8 @@ export function validateForPiZero(project: Project): PiZeroValidationReport {
 }
 
 export function downloadPiZeroProject(project: Project) {
-  const blob = new Blob([JSON.stringify(project, null, 2)], {
+  const prepared = prepareProjectForPiZero(project);
+  const blob = new Blob([JSON.stringify(prepared, null, 2)], {
     type: "application/json",
   });
   const url = URL.createObjectURL(blob);
@@ -286,6 +315,7 @@ export async function pushProjectToPiZero(
   host: string,
   token?: string,
 ): Promise<{ ok: boolean; status: number; text: string }> {
+  const prepared = prepareProjectForPiZero(project);
   const base = normalizeHost(host);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -296,7 +326,7 @@ export async function pushProjectToPiZero(
   const res = await fetch(`http://${base}/api/project`, {
     method: "POST",
     headers,
-    body: JSON.stringify(project),
+    body: JSON.stringify(prepared),
   });
   const text = await res.text();
   return { ok: res.ok, status: res.status, text };
