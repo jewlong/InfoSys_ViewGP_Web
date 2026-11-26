@@ -394,6 +394,7 @@ export function newProject(): Project {
   const id = uid();
   return {
     schemaVersion: 1,
+    autoSave: true,
     id: uid(),
     name: "未命名專案",
     description: "",

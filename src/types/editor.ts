@@ -6,6 +6,7 @@ export type Dialog =
   | "element"
   | "projects"
   | "project"
+  | "offlineDraft"
   | "screen"
   | "variable"
   | "help"

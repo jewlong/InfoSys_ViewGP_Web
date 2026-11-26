@@ -30,6 +30,10 @@ export function ProjectDialogs() {
     editScreen,
     openProject,
     check,
+    recoverableDraft,
+    restoreRecoverableDraft,
+    discardRecoverableDraft,
+    cancelRecoverableDraft,
   } = useEditorContext();
   if (dialog === "versions") return <VersionHistoryDialog />;
   if (dialog === "communication") return <CommunicationDialog />;
@@ -37,6 +41,49 @@ export function ProjectDialogs() {
   if (dialog === "assets") return <ImageResourcesDialog />;
   if (dialog === "element") return <ElementPropertiesDialog />;
   if (dialog === "pizero") return <PiZeroDeployDialog />;
+  if (dialog === "offlineDraft" && recoverableDraft) {
+    return (
+      <div className="modal-backdrop" onClick={cancelRecoverableDraft}>
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-label="離線草稿復原"
+          className="modal element-properties-dialog"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="modal-header">
+            <h2>離線草稿復原</h2>
+            <button
+              aria-label="關閉對話框（捨棄草稿）"
+              onClick={cancelRecoverableDraft}
+            >
+              <X size={19} />
+            </button>
+          </div>
+          <div className="modal-body">
+            <p>
+              偵測到「{recoverableDraft.draft.project.name}」的未儲存離線草稿，上次更新於{" "}
+              {new Date(recoverableDraft.draft.updatedAt).toLocaleString(
+                "zh-TW",
+              )}。
+            </p>
+            <p className="muted">
+              「從草稿復原」將以本機草稿覆蓋目前開啟的專案；草稿視為未儲存，
+              開啟後仍須使用者儲存。
+            </p>
+          </div>
+          <div className="modal-footer">
+            <button className="secondary-btn" onClick={discardRecoverableDraft}>
+              捨棄，開啟伺服器版本
+            </button>
+            <button className="primary-btn" onClick={restoreRecoverableDraft}>
+              從草稿復原
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
   return (
     dialog && (
       <div className="modal-backdrop" onClick={() => setDialog(null)}>
@@ -49,6 +96,7 @@ export function ProjectDialogs() {
               project: "專案設定",
               screen: "畫面設定",
               variable: "變數設定",
+              offlineDraft: "離線草稿復原",
               help: "操作說明",
               check: "專案檢查",
             }[dialog]
@@ -59,14 +107,15 @@ export function ProjectDialogs() {
           <div className="modal-header">
             <h2>
               {
-                {
-                  projects: "開啟專案",
-                  project: "專案設定",
-                  screen: "畫面設定",
-                  variable: "變數設定",
-                  help: "操作說明",
-                  check: "專案檢查",
-                }[dialog]
+              {
+                projects: "開啟專案",
+                project: "專案設定",
+                screen: "畫面設定",
+                variable: "變數設定",
+                offlineDraft: "離線草稿復原",
+                help: "操作說明",
+                check: "專案檢查",
+              }[dialog]
               }
             </h2>
             <button aria-label="關閉對話框" onClick={() => setDialog(null)}>
