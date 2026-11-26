@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { screenElements } from "../../services/screenRules";
+import { diffProjects } from "../../utils/projectDiff";
 import { useEditorContext } from "../../context/EditorContext";
 import * as api from "../../services/projectApi";
 import type { Project } from "../../model";
@@ -17,6 +18,8 @@ export function VersionHistoryDialog() {
   const [screenId, setScreenId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [diffMode, setDiffMode] = useState(false);
+  const [diffResult, setDiffResult] = useState<any>(null);
   const request = useRef(0);
   useEffect(() => {
     let active = true;
@@ -64,6 +67,16 @@ export function VersionHistoryDialog() {
     } catch (e) {
       setError(String(e));
       setBusy(false);
+    }
+  }
+  async function computeDiff() {
+    if (!preview) return;
+    try {
+      const result = diffProjects(project, preview.project);
+      setDiffResult(result);
+      setDiffMode(true);
+    } catch (e) {
+      setError(String(e));
     }
   }
   const screen = preview?.project.screens.find((s) => s.id === screenId);
@@ -169,6 +182,46 @@ export function VersionHistoryDialog() {
               >
                 還原此版本
               </button>
+              {preview && (
+                <button
+                  className="secondary-btn"
+                  disabled={busy || editor.saving}
+                  onClick={computeDiff}
+                >
+                  版本比對 (Diff)
+                </button>
+              )}
+              {diffMode && diffResult && (
+                <div className="version-diff-box" style={{ marginTop: 12 }}>
+                  <h4 style={{ margin: "0 0 8px 0", fontSize: 12 }}>
+                    版本差異：當前 → 版本 {preview.revision}
+                  </h4>
+                  <p>
+                    畫面：
+                    {diffResult.screens.added.length} 新增 ·
+                    {diffResult.screens.removed.length} 刪除 ·
+                    {diffResult.screens.modified.length} 變更
+                  </p>
+                  <p>
+                    變數：
+                    {diffResult.variables.added.length} 新增 ·
+                    {diffResult.variables.removed.length} 刪除 ·
+                    {diffResult.variables.modified.length} 變更
+                  </p>
+                  <p>
+                    設備：
+                    {diffResult.devices.added.length} 新增 ·
+                    {diffResult.devices.removed.length} 刪除 ·
+                    {diffResult.devices.modified.length} 變更
+                  </p>
+                  <button
+                    className="secondary-btn"
+                    onClick={() => setDiffMode(false)}
+                  >
+                    關閉比對
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

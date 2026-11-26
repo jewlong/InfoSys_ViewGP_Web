@@ -58,6 +58,11 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
   const menuItems: MenuItems = {
     檔案: [
       {
+        label: "新增專案精靈…",
+        fn: () => setDialog("wizard"),
+        disabled: running,
+      },
+      {
         label: "新增專案",
         fn: () => {
           if (guard()) resetProject(newProject());
@@ -67,7 +72,7 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
       },
       { label: "開啟專案…", fn: () => void openProjects(), disabled: running },
       { label: "儲存", fn: () => void save(), shortcut: "Ctrl S" },
-      { label: "另存新專案", fn: () => void save(true) },
+      { label: "另存新專案", fn: () => save(true) },
       {
         label: "匯入專案…",
         fn: () => importRef.current?.click(),
@@ -75,6 +80,28 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
       },
       { label: "匯出專案", fn: exportProject },
       { label: "匯出 / 部署至 Pi Zero…", fn: () => setDialog("pizero") },
+      {
+        label: "下載 SQLite 資料庫備份",
+        fn: () => {
+          void fetch("/api/backup/sqlite")
+            .then(async (r) => {
+              if (!r.ok) throw new Error("備份下載失敗");
+              const blob = await r.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `viewx-backup-${new Date()
+                .toISOString()
+                .slice(0, 10)}
+.db`;
+              a.click();
+              URL.revokeObjectURL(url);
+              notify("SQLite 資料庫備份已下載");
+            })
+            .catch((e) => notify(e.message, true));
+        },
+        disabled: running || editor.saving,
+      },
       {
         label: "版本紀錄與還原",
         fn: () => setDialog("versions"),

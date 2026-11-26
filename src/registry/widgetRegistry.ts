@@ -62,12 +62,14 @@ export type WidgetDefinition = {
   icon: LucideIcon;
   component: ComponentType<WidgetProps>;
   create: (x?: number, y?: number) => Element;
+  keywords?: readonly string[];
 };
 function define(
   kind: Kind,
   icon: LucideIcon,
   component: ComponentType<WidgetProps>,
   category: WidgetCategory,
+  keywords?: readonly string[],
 ): WidgetDefinition {
   return {
     category,
@@ -75,31 +77,32 @@ function define(
     icon,
     component,
     create: (x, y) => makeElement(kind, x, y),
+    keywords,
   };
 }
 export const widgetRegistry: Record<Kind, WidgetDefinition> = {
-  text: define("text", Type, TextWidget, "static"),
-  rectangle: define("rectangle", Square, RectangleWidget, "drawing"),
-  circle: define("circle", Circle, CircleWidget, "drawing"),
-  line: define("line", Minus, LineWidget, "drawing"),
-  image: define("image", Image, ImageWidget, "static"),
-  button: define("button", MousePointer2, ButtonWidget, "buttons"),
-  indicator: define("indicator", Activity, IndicatorWidget, "display"),
-  number: define("number", Hash, NumberWidget, "display"),
-  input: define("input", TextCursorInput, NumberInputWidget, "editing"),
-  switch: define("switch", ToggleLeft, SwitchWidget, "buttons"),
-  gauge: define("gauge", Gauge, GaugeWidget, "display"),
-  bar: define("bar", BarChart3, BarWidget, "display"),
-  trend: define("trend", ChartLine, TrendWidget, "display"),
-  alarm: define("alarm", Bell, AlarmWidget, "display"),
-  datetime: define("datetime", Clock, DateTimeWidget, "display"),
-  multistate: define("multistate", Layers, MultistateWidget, "display"),
-  scale: define("scale", Ruler, ScaleWidget, "static"),
-  table: define("table", TableIcon, TableWidget, "static"),
-  slider: define("slider", SlidersHorizontal, SliderWidget, "editing"),
-  arc: define("arc", CircleDot, ArcWidget, "editing"),
-  spinbox: define("spinbox", Plus, SpinboxWidget, "editing"),
-  dropdown: define("dropdown", ChevronDown, DropdownWidget, "editing"),
+  text: define("text", Type, TextWidget, "static", ["標籤", "文字", "label", "text"]),
+  rectangle: define("rectangle", Square, RectangleWidget, "drawing", ["矩形", "方塊", "rectangle", "drawing"]),
+  circle: define("circle", Circle, CircleWidget, "drawing", ["圓形", "圓", "circle", "drawing"]),
+  line: define("line", Minus, LineWidget, "drawing", ["線條", "直線", "line", "drawing"]),
+  image: define("image", Image, ImageWidget, "static", ["圖片", "影像", "image", "static"]),
+  button: define("button", MousePointer2, ButtonWidget, "buttons", ["按鈕", "button", "buttons", "jog", "點動"]),
+  indicator: define("indicator", Activity, IndicatorWidget, "display", ["指示燈", "燈號", "indicator", "led", "lamp", "display"]),
+  number: define("number", Hash, NumberWidget, "display", ["數值", "數字", "number", "顯示", "display"]),
+  input: define("input", TextCursorInput, NumberInputWidget, "editing", ["輸入框", "輸入", "input", "數值輸入", "editing"]),
+  switch: define("switch", ToggleLeft, SwitchWidget, "buttons", ["開關", "切換", "switch", "buttons"]),
+  gauge: define("gauge", Gauge, GaugeWidget, "display", ["錶頭", "壓力錶", "轉速錶", "儀表", "gauge", "dial", "meter", "display"]),
+  bar: define("bar", BarChart3, BarWidget, "display", ["長條圖", "bar", "bar chart", "顯示", "display"]),
+  trend: define("trend", ChartLine, TrendWidget, "display", ["趨勢圖", "趨勢", "trend", "chart", "line", "display"]),
+  alarm: define("alarm", Bell, AlarmWidget, "display", ["警報", "警報清單", "alarm", "bell", "display"]),
+  datetime: define("datetime", Clock, DateTimeWidget, "display", ["日期時間", "時鐘", "datetime", "clock", "display"]),
+  multistate: define("multistate", Layers, MultistateWidget, "display", ["多狀態", "multistate", "layers", "display"]),
+  scale: define("scale", Ruler, ScaleWidget, "static", ["刻度尺", "尺", "scale", "ruler", "static"]),
+  table: define("table", TableIcon, TableWidget, "static", ["表格", "table", "static"]),
+  slider: define("slider", SlidersHorizontal, SliderWidget, "editing", ["滑塊", "slider", "微調", "editing"]),
+  arc: define("arc", CircleDot, ArcWidget, "editing", ["弧形", "arc", "圓弧", "editing"]),
+  spinbox: define("spinbox", Plus, SpinboxWidget, "editing", ["步進", "微調", "spinbox", "數位加減", "editing"]),
+  dropdown: define("dropdown", ChevronDown, DropdownWidget, "editing", ["下拉選單", "dropdown", "選單", "editing"]),
 };
 
 export function groupedWidgets(search = "") {
@@ -108,13 +111,19 @@ export function groupedWidgets(search = "") {
     .map((category) => ({
       ...category,
       kinds: (Object.keys(widgetRegistry) as Kind[]).filter(
-        (kind) =>
-          widgetRegistry[kind].category === category.id &&
-          (`${category.label} ${widgetRegistry[kind].label} ${kind}`
-            .toLocaleLowerCase()
-            .includes(query) ||
+        (kind) => {
+          const def = widgetRegistry[kind];
+          const keywordsText = (def.keywords ?? []).join(" ");
+          return (
+            `${category.label} ${def.label} ${kind} ${keywordsText}`
+              .toLocaleLowerCase()
+              .includes(query) ||
             (kind === "button" &&
-              ("jog 點動".includes(query) || query.includes("jog") || query.includes("點動")))),
+              ("jog 點動".includes(query) ||
+                query.includes("jog") ||
+                query.includes("點動")))
+          );
+        },
       ),
     }))
     .filter((group) => group.kinds.length > 0);

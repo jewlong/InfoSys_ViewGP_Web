@@ -7,6 +7,7 @@ import {
   validDevice,
 } from "../../services/communicationRules";
 import { communicationRequest } from "../../services/communication";
+import { testDeviceConnection } from "../../services/communicationApi";
 import { Field, NumberField } from "../ui/Controls";
 import { ModbusMappingFields } from "./ModbusMappingFields";
 export function CommunicationDialog() {
@@ -27,6 +28,8 @@ export function CommunicationDialog() {
   );
   const [ports, setPorts] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  const [testResults, setTestResults] = useState<Record<string, { ok: boolean; latencyMs: number; message: string }>>({});
+  const [testing, setTesting] = useState<Set<string>>(new Set());
   const devices = project.devices ?? [],
     device = devices.find((d) => d.id === selectedId);
   const patch = (partial: Partial<CommunicationDevice>) =>
@@ -50,6 +53,32 @@ export function CommunicationDialog() {
       (p.devices ??= []).push(d);
     });
     setSelectedId(d.id);
+  }
+
+  async function testConnection(d: CommunicationDevice) {
+    setTesting((old) => new Set(old).add(d.id));
+    try {
+      const result = await testDeviceConnection(d);
+      setTestResults((old) => ({ ...old, [d.id]: result }));
+      notify(
+        result.ok
+          ? `設備「${d.name}」連線正常（${result.latencyMs} ms）`
+          : `設備「${d.name}」連線失敗：${result.message}`,
+        !result.ok,
+      );
+    } catch (e) {
+      setTestResults((old) => ({
+        ...old,
+        [d.id]: { ok: false, latencyMs: 0, message: String(e) },
+      }));
+      notify(`設備「${d.name}」測試錯誤：${String(e)}`, true);
+    } finally {
+      setTesting((old) => {
+        const next = new Set(old);
+        next.delete(d.id);
+        return next;
+      });
+    }
   }
   const problems = communicationProblems(project);
   return (
@@ -426,6 +455,20 @@ export function CommunicationDialog() {
                         {new Date(state.lastSuccessAt).toLocaleString("zh-TW")}
                       </small>
                     )}
+                    {testResults[d.id] && (
+                      <small style={{ marginLeft: 8 }}>
+                        {testResults[d.id].ok ? "✓" : "✗"}
+                        {testResults[d.id].message}
+                        ({testResults[d.id].latencyMs} ms)
+                      </small>
+                    )}
+                    <button
+                      className="secondary-btn"
+                      disabled={testing.has(d.id)}
+                      onClick={() => testConnection(d)}
+                    >
+                      {testing.has(d.id) ? "測試中…" : "測試連線"}
+                    </button>
                   </div>
                 );
               })}

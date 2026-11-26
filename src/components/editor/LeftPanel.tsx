@@ -1,5 +1,5 @@
 import { ProjectTree } from "./ProjectTree";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   LayoutDashboard,
   ChevronDown,
@@ -18,6 +18,7 @@ import {
   groupedWidgets,
   widgetRegistry,
   type WidgetCategory,
+  type Kind,
 } from "../../registry/widgetRegistry";
 import { SYSTEM_VARIABLES } from "../../services/systemVariables";
 import { clone } from "../../utils/project";
@@ -48,6 +49,52 @@ export function LeftPanel() {
     deleteVariable,
   } = useEditorContext();
   const groups = groupedWidgets(search);
+  const [recentWidgets, setRecentWidgets] = useState<Kind[]>([]);
+  const [favoriteWidgets, setFavoriteWidgets] = useState<Set<Kind>>(new Set());
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("viewx.recentWidgets");
+      if (raw) setRecentWidgets(JSON.parse(raw) as Kind[]);
+      const favRaw = localStorage.getItem("viewx.favoriteWidgets");
+      if (favRaw) setFavoriteWidgets(new Set(JSON.parse(favRaw)));
+    } catch {
+      /* ignore localStorage errors */
+    }
+  }, []);
+
+  const addElementWithTracking = useCallback(
+    (kind: Kind) => {
+      addElement(kind);
+      setRecentWidgets((old) => {
+        const next = [kind, ...old.filter((k) => k !== kind)].slice(0, 8);
+        try {
+          localStorage.setItem("viewx.recentWidgets", JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    },
+    [addElement],
+  );
+
+  const toggleFavorite = useCallback(
+    (kind: Kind) => {
+      setFavoriteWidgets((old) => {
+        const next = new Set(old);
+        if (next.has(kind)) next.delete(kind);
+        else next.add(kind);
+        try {
+          localStorage.setItem("viewx.favoriteWidgets", JSON.stringify([...next]));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    },
+    [],
+  );
   return (
     <aside className="left-panel">
       <div className="section-heading">
@@ -94,6 +141,44 @@ export function LeftPanel() {
             />
             <kbd>⌕</kbd>
           </div>
+          {recentWidgets.length > 0 || favoriteWidgets.size > 0 ? (
+            <div className="library-section" style={{ marginTop: 10 }}>
+              <div className="library-label">
+                <span>最近使用 / 常用收藏</span>
+                {favoriteWidgets.size > 0 && (
+                  <span style={{ fontSize: 11, opacity: 0.6 }}>★ 收藏 · 最近使用</span>
+                )}
+              </div>
+              <div className="component-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(56px, 1fr))" }}>
+                {[
+                  ...new Set([...Array.from(favoriteWidgets), ...recentWidgets]),
+                ].map((k) => {
+                  const Icon = widgetRegistry[k].icon;
+                  const isFav = favoriteWidgets.has(k);
+                  return (
+                    <button
+                      key={k}
+                      disabled={running}
+                      draggable={!running}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("viewx-kind", k);
+                      }}
+                      onClick={() => addElementWithTracking(k)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        toggleFavorite(k);
+                      }}
+                      title={`${labels[k]}（右鍵切換收藏）`}
+                    >
+                      <Icon size={19} strokeWidth={1.5} />
+                      <span style={{ fontSize: 10 }}>{labels[k]}</span>
+                      {isFav && <span style={{ fontSize: 10, color: "#b18325" }}>★</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <div className="library">
             <div className="library-label">
               COMPONENTS <span>元件庫</span>
@@ -141,7 +226,7 @@ export function LeftPanel() {
                         onDragStart={(e) =>
                           e.dataTransfer.setData("viewx-kind", k)
                         }
-                        onClick={() => addElement(k)}
+                        onClick={() => addElementWithTracking(k)}
                       >
                         <Icon size={21} strokeWidth={1.5} />
                         <span>{labels[k]}</span>

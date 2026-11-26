@@ -1,4 +1,5 @@
 import { CommunicationDialog } from "./CommunicationDialog";
+import { ProjectWizardDialog } from "./ProjectWizardDialog";
 import { ModbusMappingFields } from "./ModbusMappingFields";
 import { validMapping } from "../../services/communicationRules";
 import { VersionHistoryDialog } from "./VersionHistoryDialog";
@@ -36,6 +37,7 @@ export function ProjectDialogs() {
     cancelRecoverableDraft,
   } = useEditorContext();
   if (dialog === "versions") return <VersionHistoryDialog />;
+  if (dialog === "wizard") return <ProjectWizardDialog />;
   if (dialog === "communication") return <CommunicationDialog />;
   if (dialog === "alarms") return <AlarmManagementDialog />;
   if (dialog === "assets") return <ImageResourcesDialog />;

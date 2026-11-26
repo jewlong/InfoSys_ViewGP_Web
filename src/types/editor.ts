@@ -12,6 +12,7 @@ export type Dialog =
   | "help"
   | "check"
   | "pizero"
+  | "wizard"
   | null;
 export type Notice = { text: string; error?: boolean };
 export type ProjectRow = {

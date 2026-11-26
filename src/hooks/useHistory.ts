@@ -6,7 +6,7 @@ export function useHistory(initialProject: () => Project) {
   const [history, setHistory] = useState<Project[]>([]),
     [future, setFuture] = useState<Project[]>([]);
   function recordSnapshot(snapshot: Project) {
-    setHistory((h) => [...h.slice(-49), clone(snapshot)]);
+    setHistory((h) => [...h.slice(-99), clone(snapshot)]);
     setFuture([]);
   }
   function change(fn: (p: Project) => void) {

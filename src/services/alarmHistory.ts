@@ -57,6 +57,23 @@ export async function listAlarmHistory(
   };
 }
 
+export async function pruneAlarmHistory(
+  projectId: string,
+  policy: { maxDays?: number; maxRecords?: number },
+): Promise<{ deletedCount: number }> {
+  const response = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/alarm-events/prune`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(policy),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error ?? "警報清理失敗");
+  return { deletedCount: data.deletedCount ?? 0 };
+}
+
 type Job = {
   projectId: string;
   session: AlarmSession;

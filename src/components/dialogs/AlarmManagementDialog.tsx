@@ -10,13 +10,13 @@ import { globalAlarmProblems } from "../../services/globalAlarms";
 import {
   listAlarmHistory,
   type AlarmHistoryPage,
+  pruneAlarmHistory,
 } from "../../services/alarmHistory";
 import { Field, NumberField } from "../ui/Controls";
 import { ManagementDialog } from "./ManagementDialog";
 import { AlarmEventTable } from "./AlarmEventTable";
 
 export function AlarmManagementDialog() {
-  const editor = useEditorContext();
   const {
     project,
     change,
@@ -28,6 +28,7 @@ export function AlarmManagementDialog() {
     alarmHistoryError,
     alarmHistoryPending,
     retryAlarmHistory,
+    notify,
   } = editor;
   const [tab, setTab] = useState<"settings" | "live" | "history">(
     running ? "live" : "settings",
@@ -50,6 +51,9 @@ export function AlarmManagementDialog() {
   });
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [pruneMaxDays, setPruneMaxDays] = useState<number | "">("");
+  const [pruneMaxRecords, setPruneMaxRecords] = useState<number | "">("");
+  const [pruning, setPruning] = useState(false);
   const request = useRef(0);
   useEffect(
     () => () => {
@@ -89,6 +93,60 @@ export function AlarmManagementDialog() {
     } finally {
       if (token === request.current) setBusy(false);
     }
+  }
+  async function handlePrune() {
+    const maxDays =
+      pruneMaxDays === "" || pruneMaxDays === undefined
+        ? undefined
+        : Number(pruneMaxDays);
+    const maxRecords =
+      pruneMaxRecords === "" || pruneMaxRecords === undefined
+        ? undefined
+        : Number(pruneMaxRecords);
+    if (maxDays === undefined && maxRecords === undefined) {
+      setError("請設定保留天數或最大筆數至少一項");
+      return;
+    }
+    setPruning(true);
+    setError("");
+    try {
+      const result = await pruneAlarmHistory(project.id, {
+        ...(maxDays !== undefined ? { maxDays } : {}),
+        ...(maxRecords !== undefined ? { maxRecords } : {}),
+      });
+      notify(`已清理 ${result.deletedCount} 筆已解除警報紀錄`);
+      void load(0);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setPruning(false);
+    }
+  }
+  function exportAlarmCsv() {
+    if (page.items.length === 0) {
+      notify("無歷史紀錄可匯出", true);
+      return;
+    }
+    const headers = ["ID", "訊息", "等級", "群組", "觸發時間", "解除時間"];
+    const rows = page.items.map((e) => [
+      e.id,
+      e.message,
+      e.severity,
+      e.group ?? "",
+      new Date(e.raisedAt).toLocaleString("zh-TW"),
+      e.clearedAt ? new Date(e.clearedAt).toLocaleString("zh-TW") : "",
+    ]);
+    let csv = [headers, ...rows]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `alarms-${project.id}-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify("警報歷史已匯出為 CSV");
   }
   function patchArea(patch: Partial<AlarmArea>) {
     if (!area) return;
@@ -530,6 +588,53 @@ export function AlarmManagementDialog() {
               </form>
               {error && <p role="alert">{error}</p>}
               {busy && <p>讀取歷史中…</p>}
+              <fieldset className="alarm-prune" disabled={pruning}>
+                <legend>警報歷史清理（僅刪除已解除紀錄）</legend>
+                <div className="property-grid">
+                  <Field label="保留天數">
+                    <input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      value={pruneMaxDays === "" ? "" : String(pruneMaxDays)}
+                      onChange={(e) =>
+                        setPruneMaxDays(
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="最大筆數">
+                    <input
+                      type="number"
+                      min={100}
+                      max={100000}
+                      value={pruneMaxRecords === "" ? "" : String(pruneMaxRecords)}
+                      onChange={(e) =>
+                        setPruneMaxRecords(
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
+                      }
+                    />
+                  </Field>
+                </div>
+                <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                  <button
+                    className="secondary-btn"
+                    disabled={pruning}
+                    onClick={handlePrune}
+                  >
+                    {pruning ? "清理中…" : "立即清理"}
+                  </button>
+                  <button
+                    className="secondary-btn"
+                    disabled={busy || page.items.length === 0}
+                    onClick={exportAlarmCsv}
+                  >
+                    匯出 CSV
+                  </button>
+                </div>
+              </fieldset>
               <AlarmEventTable events={page.items} />
               <div className="alarm-history-pagination">
                 <span>
