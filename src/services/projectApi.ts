@@ -1,19 +1,53 @@
 import { validateProject, type Project } from "../model";
 import type { ProjectRow } from "../types/editor";
-export async function listProjects(): Promise<ProjectRow[]> {
-  const response = await fetch("/api/projects");
-  if (!response.ok) throw new Error("無法讀取專案清單");
-  return response.json();
+
+async function readJson<T>(
+  response: Response,
+  fallbackError: string,
+): Promise<T> {
+  const text = await response.text();
+  let data: Record<string, unknown> | null = null;
+  if (text.trim()) {
+    try {
+      data = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      data = null;
+    }
+  }
+  if (!response.ok) {
+    const msg =
+      (data && typeof data.error === "string" && data.error) ||
+      (response.status >= 500 && !text.trim()
+        ? "後端 C# 儲存服務尚未就緒（http://localhost:5000），請稍候幾秒或確認已啟動 npm run dev:server"
+        : fallbackError);
+    throw new Error(msg);
+  }
+  if (data === null) throw new Error(fallbackError);
+  return data as unknown as T;
 }
+
+export async function listProjects(): Promise<ProjectRow[]> {
+  let response: Response;
+  try {
+    response = await fetch("/api/projects");
+  } catch {
+    throw new Error("無法連線至後端伺服器（http://localhost:5000）");
+  }
+  return readJson<ProjectRow[]>(response, "無法讀取專案清單");
+}
+
 export async function getProject(
   id: string,
 ): Promise<{ project: Project; revision: number }> {
   const response = await fetch(`/api/projects/${encodeURIComponent(id)}`);
-  if (!response.ok) throw new Error("無法開啟專案");
-  const data = await response.json();
+  const data = await readJson<{ project: Project; revision: number }>(
+    response,
+    "無法開啟專案",
+  );
   if (!validateProject(data.project)) throw new Error("專案格式不支援");
   return data;
 }
+
 export async function saveProject(
   project: Project,
   revision: number,
@@ -21,17 +55,25 @@ export async function saveProject(
   const body = JSON.stringify({ project, revision });
   if (new Blob([body]).size > 20 * 1024 * 1024)
     throw new Error("專案超過 20 MB，請移除未使用圖片");
-  const response = await fetch(
-    `/api/projects/${encodeURIComponent(project.id)}`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body,
-    },
+  let response: Response;
+  try {
+    response = await fetch(
+      `/api/projects/${encodeURIComponent(project.id)}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body,
+      },
+    );
+  } catch {
+    throw new Error(
+      "無法連線至後端 C# 伺服器（http://localhost:5000），變更已自動保存至本機離線草稿",
+    );
+  }
+  return readJson<{ revision: number; updatedAt: string }>(
+    response,
+    "儲存專案失敗",
   );
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error);
-  return data;
 }
 
 export type VersionRow = {
@@ -39,6 +81,7 @@ export type VersionRow = {
   createdAt: string;
   label?: string | null;
 };
+
 export async function updateVersionLabel(
   id: string,
   revision: number,
@@ -52,17 +95,22 @@ export async function updateVersionLabel(
       body: JSON.stringify({ label }),
     },
   );
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error ?? "無法更新版本標註");
-  return data;
+  return readJson<{ revision: number; label: string }>(
+    response,
+    "無法更新版本標註",
+  );
 }
+
 export async function listVersions(id: string): Promise<VersionRow[]> {
   const response = await fetch(
     `/api/projects/${encodeURIComponent(id)}/versions`,
   );
-  if (!response.ok) throw new Error("無法讀取版本紀錄，請先儲存專案");
-  return response.json();
+  return readJson<VersionRow[]>(
+    response,
+    "無法讀取版本紀錄，請先儲存專案",
+  );
 }
+
 export async function getVersion(
   id: string,
   revision: number,
@@ -70,11 +118,15 @@ export async function getVersion(
   const response = await fetch(
     `/api/projects/${encodeURIComponent(id)}/versions/${revision}`,
   );
-  if (!response.ok) throw new Error("無法讀取版本");
-  const data = await response.json();
+  const data = await readJson<{
+    project: Project;
+    revision: number;
+    updatedAt: string;
+  }>(response, "無法讀取版本");
   if (!validateProject(data.project)) throw new Error("此版本格式不支援");
   return data;
 }
+
 export async function restoreVersion(
   id: string,
   sourceRevision: number,
@@ -88,8 +140,10 @@ export async function restoreVersion(
       body: JSON.stringify({ sourceRevision, revision }),
     },
   );
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error);
+  const data = await readJson<{ project: Project; revision: number }>(
+    response,
+    "還原版本失敗",
+  );
   if (!validateProject(data.project)) throw new Error("此版本格式不支援");
   return data;
 }

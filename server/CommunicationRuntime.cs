@@ -22,7 +22,7 @@ public sealed class CommunicationRuntime : BackgroundService
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(device.TimeoutMs);
             var response = await transport.ExchangeAsync((byte)device.UnitId, ModbusCodec.ReadRequest(3, 0, 1), timeout.Token);
-            try { ModbusCodec.ValidateFunction(3, response); return new(true, watch.ElapsedMilliseconds, "連線成功，設備已回應"); }
+            try { ModbusCodec.ValidateFunction(response, 3); return new(true, watch.ElapsedMilliseconds, "連線成功，設備已回應"); }
             catch (Exception) { return new(true, watch.ElapsedMilliseconds, "設備已回應，但位址 0 不可讀取（連線正常，請確認標籤位址）"); }
         }
         catch (OperationCanceledException) when (!token.IsCancellationRequested) { return new(false, watch.ElapsedMilliseconds, "設備通訊逾時，請檢查網路、位址與站號"); }
