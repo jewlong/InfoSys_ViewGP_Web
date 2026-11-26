@@ -19,7 +19,14 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
     alarmEvents,
     acknowledgeAlarm,
     momentaryAction,
+    popupDrafts,
+    confirmPopup,
   } = useEditorContext();
+  const transactional = screen.popupCommitMode === "transactional";
+  const modal = screen.popupModal !== false;
+  const draft = popupDrafts[screen.id] ?? {};
+  const draftCount = Object.keys(draft).length;
+  const shownValues = transactional ? { ...values, ...draft } : values;
   const ref = useRef<HTMLElement>(null);
   const [viewport, setViewport] = useState({
     width: window.innerWidth,
@@ -32,7 +39,7 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
     return () => window.removeEventListener("resize", resize);
   }, []);
   useEffect(() => {
-    if (!active) return;
+    if (!active || !modal) return;
     const previous = document.activeElement as HTMLElement | null;
     const focus = () =>
       ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
@@ -46,7 +53,7 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
       document.removeEventListener("focusin", containFocus);
       if (previous?.isConnected) previous.focus();
     };
-  }, [active]);
+  }, [active, modal]);
   const scale = Math.min(
     1,
     Math.max(0.01, (viewport.width - 32) / screen.width),
@@ -57,13 +64,17 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
       className="runtime-popup-backdrop"
       inert={!active}
       aria-hidden={!active}
+      style={modal ? undefined : { pointerEvents: "none" }}
     >
       <section
         className="runtime-popup"
-        style={{ width: screen.width * scale + 2 }}
+        style={{
+          width: screen.width * scale + 2,
+          ...(modal ? {} : { pointerEvents: "auto" }),
+        }}
         ref={ref}
         role="dialog"
-        aria-modal={active || undefined}
+        aria-modal={(active && modal) || undefined}
         aria-label={screen.name}
         onKeyDown={(event) => {
           if (event.key !== "Tab") return;
@@ -120,7 +131,7 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
                   <WidgetRenderer
                     element={e}
                     assets={project.assets}
-                    values={values}
+                    values={shownValues}
                     running
                     disabled={Boolean(
                       (e.enabledId && !values[e.enabledId]) ||
@@ -140,6 +151,23 @@ function PopupLayer({ screen, active }: { screen: Screen; active: boolean }) {
               ))}
           </div>
         </div>
+        {transactional && (
+          <div className="transactional-popup-footer">
+            <span role="status">
+              {draftCount ? `尚有 ${draftCount} 項未套用變更` : "尚無變更"}
+            </span>
+            <button className="secondary-btn" onClick={closePopup}>
+              取消
+            </button>
+            <button
+              className="primary-btn"
+              disabled={!draftCount}
+              onClick={() => confirmPopup(screen.id)}
+            >
+              確定
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );

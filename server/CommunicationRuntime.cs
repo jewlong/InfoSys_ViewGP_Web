@@ -7,9 +7,29 @@ public sealed record TagSample(object? Value, string Quality, long? UpdatedAt, s
 public sealed record DeviceSample(string Id, string State, long? LastSuccessAt, string? Error);
 public sealed record CommunicationSnapshot(string SessionId, string ProjectId, IReadOnlyDictionary<string, TagSample> Tags, DeviceSample[] Devices);
 public sealed class CommunicationSessionException(string message) : Exception(message);
+public sealed record ConnectionTestResult(bool Ok, long LatencyMs, string Message);
 
 public sealed class CommunicationRuntime : BackgroundService
 {
+    // One non-destructive read. A Modbus exception frame still proves the device answers on this unit id.
+    public static async Task<ConnectionTestResult> TestConnection(CommunicationDevice device, CancellationToken token)
+    {
+        if (!CommunicationSettings.ValidDevice(device)) return new(false, 0, "設備設定無效，請檢查位址、埠號與逾時");
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        IModbusTransport transport = device.Transport == "tcp" ? new ModbusTcpTransport(device.Host!, device.Port) : new ModbusRtuTransport(device);
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(device.TimeoutMs);
+            var response = await transport.ExchangeAsync((byte)device.UnitId, ModbusCodec.ReadRequest(3, 0, 1), timeout.Token);
+            try { ModbusCodec.ValidateFunction(3, response); return new(true, watch.ElapsedMilliseconds, "連線成功，設備已回應"); }
+            catch (Exception) { return new(true, watch.ElapsedMilliseconds, "設備已回應，但位址 0 不可讀取（連線正常，請確認標籤位址）"); }
+        }
+        catch (OperationCanceledException) when (!token.IsCancellationRequested) { return new(false, watch.ElapsedMilliseconds, "設備通訊逾時，請檢查網路、位址與站號"); }
+        catch (Exception e) when (e is not OperationCanceledException) { return new(false, watch.ElapsedMilliseconds, "無法連線：" + e.Message); }
+        finally { transport.Dispose(); }
+    }
+
     private readonly ConcurrentDictionary<string, Session> sessions = new();
     private readonly object startLock = new();
     public CommunicationSnapshot Start(CommunicationConfig config)

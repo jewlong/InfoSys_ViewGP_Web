@@ -121,6 +121,30 @@ export function ProjectDialogs() {
                   編輯停止 2
                   秒後儲存；關閉設定視窗後開始。儲存失敗時暫停，避免覆蓋他人版本。
                 </p>
+                <Field label="自動儲存間隔（毫秒）">
+                  <NumberField
+                    value={project.autoSaveIntervalMs ?? 2000}
+                    min={1000}
+                    max={60000}
+                    onChange={(v) =>
+                      change((p) => {
+                        p.autoSaveIntervalMs = Math.round(v);
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="對話盒最大巢狀層級">
+                  <NumberField
+                    value={project.maxPopupDepth ?? 16}
+                    min={1}
+                    max={16}
+                    onChange={(v) =>
+                      change((p) => {
+                        p.maxPopupDepth = Math.round(v);
+                      })
+                    }
+                  />
+                </Field>
                 <Field label="專案名稱">
                   <input
                     value={project.name}

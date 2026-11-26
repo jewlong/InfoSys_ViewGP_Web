@@ -8,6 +8,12 @@ import {
 import { uid, validateProject, type Project } from "../model";
 import * as projectApi from "../services/projectApi";
 import { downloadProject } from "../services/projectFiles";
+import {
+  clearOfflineDraft,
+  getLatestOfflineDraft,
+  saveOfflineDraft,
+  type OfflineDraftRecord,
+} from "../services/offlineDraftStore";
 import type { Dialog, ProjectRow } from "../types/editor";
 import { clone } from "../utils/project";
 type Options = {
@@ -58,10 +64,45 @@ export function useProjectPersistence({
       return;
     const timer = window.setTimeout(
       () => void latestSave.current(false, true),
-      2000,
+      project.autoSaveIntervalMs ?? 2000,
     );
     return () => window.clearTimeout(timer);
   }, [project, dirty, saving, running, dialog, autoSaveError]);
+  // Offline draft: mirror unsaved edits to IndexedDB so a closed tab is recoverable.
+  const [recoverableDraft, setRecoverableDraft] =
+    useState<OfflineDraftRecord | null>(null);
+  useEffect(() => {
+    if (!dirty || running) return;
+    const timer = window.setTimeout(
+      () =>
+        void saveOfflineDraft({
+          projectId: project.id,
+          project,
+          baseRevision: revision,
+          updatedAt: Date.now(),
+        }),
+      1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [project, dirty, running, revision]);
+  useEffect(() => {
+    void getLatestOfflineDraft().then((draft) => {
+      if (draft && JSON.stringify(draft.project) !== JSON.stringify(project))
+        setRecoverableDraft(draft);
+    });
+    // Check once at application start.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function recoverOfflineDraft() {
+    if (!recoverableDraft) return;
+    resetProject(recoverableDraft.project, recoverableDraft.baseRevision, false);
+    setRecoverableDraft(null);
+    notify("已復原離線草稿，請儲存專案");
+  }
+  function discardOfflineDraft() {
+    if (recoverableDraft) void clearOfflineDraft(recoverableDraft.projectId);
+    setRecoverableDraft(null);
+  }
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (dirty) {
@@ -105,6 +146,7 @@ export function useProjectPersistence({
       }
       setRevision(body.revision);
       setSavedSnapshot(JSON.stringify(snapshot));
+      void clearOfflineDraft(snapshot.id);
       setAutoSaveError("");
       notify(
         `${automatic ? "已自動儲存" : "已儲存至 SQLite"} · 版本 ${body.revision}`,
@@ -184,6 +226,9 @@ export function useProjectPersistence({
   }
   return {
     restore,
+    recoverableDraft,
+    recoverOfflineDraft,
+    discardOfflineDraft,
     autoSaveError,
     retryAutoSave: () => setAutoSaveError(""),
     revision,

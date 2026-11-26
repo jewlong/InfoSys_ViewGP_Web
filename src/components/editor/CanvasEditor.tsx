@@ -70,6 +70,9 @@ export function CanvasEditor() {
     alarmHistoryPending,
     alarmHistoryError,
     retryAlarmHistory,
+    recoverableDraft,
+    recoverOfflineDraft,
+    discardOfflineDraft,
   } = useEditorContext();
   return (
     <main className="editor">
@@ -141,7 +144,14 @@ export function CanvasEditor() {
             >
               <div
                 ref={canvasRef}
-                inert={running && popupIds.length > 0}
+                inert={
+                  running &&
+                  popupIds.some(
+                    (id) =>
+                      project.screens.find((s) => s.id === id)?.popupModal !==
+                      false,
+                  )
+                }
                 className={
                   "design-canvas " + (grid && !running ? "show-grid" : "")
                 }
@@ -361,6 +371,13 @@ export function CanvasEditor() {
           {selected.length ? `已選取 ${selected.length} 個元件` : "未選取元件"}
         </span>
         <div className="status-right">
+          {recoverableDraft && (
+            <span className="draft-recovery-banner" role="status">
+              偵測到未儲存的離線草稿「{recoverableDraft.project.name}」
+              <button onClick={recoverOfflineDraft}>復原草稿</button>
+              <button onClick={discardOfflineDraft}>捨棄草稿</button>
+            </span>
+          )}
           {(running || alarmHistoryPending > 0 || alarmHistoryError) && (
             <span title={alarmHistoryError}>
               {alarmHistoryError

@@ -7,7 +7,7 @@ namespace ViewX.Server;
 public static class ProjectValidator
 {
     private static readonly HashSet<string> Kinds = ["text", "rectangle", "circle", "line", "image", "button", "indicator", "number", "input", "switch", "gauge", "bar", "trend", "alarm", "datetime", "multistate", "scale", "table", "slider", "arc", "spinbox", "dropdown"];
-    private static readonly HashSet<string> Actions = ["toggle", "set", "increment", "screen", "reset", "momentary", "previousScreen", "openDialog", "closeDialog", "popup", "closePopup"];
+    private static readonly HashSet<string> Actions = ["toggle", "set", "increment", "screen", "reset", "momentary", "previousScreen", "openDialog", "closeDialog", "popup", "closePopup", "confirmPopup"];
     private static readonly string[] RequiredElementStrings = ["name", "text", "color", "background", "actionValue"];
     private static readonly string[] OptionalElementStrings = ["variableId", "targetScreenId", "groupId", "conditionId", "enabledId", "image", "unit", "dateTimeFormat", "gridColor", "scaleOrientation"];
     private static bool Property(JsonElement element, string name, out JsonElement value)
@@ -28,6 +28,7 @@ public static class ProjectValidator
             !Array(project, "screens", out var screens) || screens.GetArrayLength() == 0 || !Array(project, "variables", out var variables)) return false;
         if (Property(project, "autoSave", out var autoSave) && autoSave.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return false;
         if (!AlarmSettingsValidator.IsValid(project) || !CommunicationSettings.IsValid(project)) return false;
+        if (!OptionalProjectSettingsValid(project)) return false;
         var assetIds = new HashSet<string>(StringComparer.Ordinal);
         if (Property(project, "assets", out var assets))
         {
@@ -60,6 +61,8 @@ public static class ProjectValidator
                 !Text(screen, "background") || !Array(screen, "elements", out var elements) || elements.GetArrayLength() > 2000) return false;
             if (Property(screen, "type", out var sType) && (sType.ValueKind != JsonValueKind.String || !new[] { "screen", "dialog", "normal", "popup" }.Contains(sType.GetString()))) return false;
             if (Property(screen, "inheritsScreenId", out var inheritId) && inheritId.ValueKind != JsonValueKind.String) return false;
+            if (Property(screen, "popupCommitMode", out var commit) && (commit.ValueKind != JsonValueKind.String || commit.GetString() is not ("immediate" or "transactional"))) return false;
+            if (Property(screen, "popupModal", out var modal) && modal.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return false;
             if (screen.GetProperty("id").GetString() == project.GetProperty("startScreenId").GetString()) startFound = true;
             foreach (var element in elements.EnumerateArray())
             {
@@ -76,6 +79,21 @@ public static class ProjectValidator
             }
         }
         return startFound && ValidScreenStructure(project, screens);
+    }
+
+    private static bool IntInRange(JsonElement value, long min, long max) =>
+        value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var n) && n >= min && n <= max;
+
+    private static bool OptionalProjectSettingsValid(JsonElement project)
+    {
+        if (Property(project, "autoSaveIntervalMs", out var interval) && !IntInRange(interval, 1000, 60000)) return false;
+        if (Property(project, "maxPopupDepth", out var depth) && !IntInRange(depth, 1, 16)) return false;
+        if (!Property(project, "alarmRetention", out var retention)) return true;
+        if (retention.ValueKind != JsonValueKind.Object) return false;
+        if (Property(retention, "maxDays", out var days) && !IntInRange(days, 1, 3650)) return false;
+        if (Property(retention, "maxRecords", out var records) && !IntInRange(records, 100, 100000)) return false;
+        if (Property(retention, "autoPrune", out var prune) && prune.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return false;
+        return true;
     }
 
     private static bool ValidScreenStructure(JsonElement project, JsonElement screens)

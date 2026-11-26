@@ -105,7 +105,7 @@ export function openPopup(
   if (
     !project.screens.some((s) => s.id === id && isPopup(s)) ||
     stack.includes(id) ||
-    stack.length >= 16
+    stack.length >= (project.maxPopupDepth ?? 16)
   )
     return undefined;
   return [...stack, id];

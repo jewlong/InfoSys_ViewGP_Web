@@ -36,7 +36,8 @@ export type Action =
   | "openDialog"
   | "closeDialog"
   | "popup"
-  | "closePopup";
+  | "closePopup"
+  | "confirmPopup";
 export type MultistateItem = {
   value: number;
   label: string;
@@ -200,7 +201,14 @@ export type Screen = {
   type?: "screen" | "dialog" | "normal" | "popup";
   parentScreenId?: string;
   inheritsScreenId?: string;
+  popupCommitMode?: "immediate" | "transactional";
+  popupModal?: boolean;
   elements: Element[];
+};
+export type AlarmRetentionPolicy = {
+  maxDays?: number;
+  maxRecords?: number;
+  autoPrune?: boolean;
 };
 export type ImageAsset = { id: string; name: string; data: string };
 export type Project = {
@@ -209,6 +217,9 @@ export type Project = {
   alarmTicker?: AlarmTickerSettings;
   assets?: ImageAsset[];
   autoSave?: boolean;
+  autoSaveIntervalMs?: number;
+  maxPopupDepth?: number;
+  alarmRetention?: AlarmRetentionPolicy;
   schemaVersion: 1;
   id: string;
   name: string;
@@ -539,6 +550,7 @@ export function validateProject(value: unknown): value is Project {
   )
     return false;
   if (p.autoSave !== undefined && typeof p.autoSave !== "boolean") return false;
+  if (!validateOptionalProjectSettings(p)) return false;
   if (!validateAlarmSettings(p) || !validateCommunicationSettings(p))
     return false;
   const assetIds = new Set<string>();
@@ -600,6 +612,9 @@ export function validateProject(value: unknown): value is Project {
           ["screen", "dialog", "normal", "popup"].includes(s.type)) &&
         (s.inheritsScreenId === undefined ||
           typeof s.inheritsScreenId === "string") &&
+        (s.popupCommitMode === undefined ||
+          ["immediate", "transactional"].includes(s.popupCommitMode)) &&
+        (s.popupModal === undefined || typeof s.popupModal === "boolean") &&
         Array.isArray(s.elements) &&
         s.elements.length <= 2000 &&
         s.elements.every(
@@ -659,6 +674,7 @@ export function validateProject(value: unknown): value is Project {
               "closeDialog",
               "popup",
               "closePopup",
+              "confirmPopup",
             ].includes(e.action) &&
             (!e.image ||
               (typeof e.image === "string" &&
@@ -666,6 +682,26 @@ export function validateProject(value: unknown): value is Project {
         ),
     ) &&
     screenProblems(p).length === 0
+  );
+}
+
+const inRange = (v: unknown, min: number, max: number) =>
+  typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
+export function validateOptionalProjectSettings(p: Project): boolean {
+  if (
+    p.autoSaveIntervalMs !== undefined &&
+    !inRange(p.autoSaveIntervalMs, 1000, 60000)
+  )
+    return false;
+  if (p.maxPopupDepth !== undefined && !inRange(p.maxPopupDepth, 1, 16))
+    return false;
+  const r = p.alarmRetention;
+  if (r === undefined) return true;
+  if (!r || typeof r !== "object" || Array.isArray(r)) return false;
+  return (
+    (r.maxDays === undefined || inRange(r.maxDays, 1, 3650)) &&
+    (r.maxRecords === undefined || inRange(r.maxRecords, 100, 100000)) &&
+    (r.autoPrune === undefined || typeof r.autoPrune === "boolean")
   );
 }
 

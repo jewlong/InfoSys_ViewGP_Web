@@ -121,6 +121,54 @@ app.MapGet("/api/projects/{id}/alarm-events", (string id, HttpRequest request, P
     return Results.Json(history.List(id, offset, limit, search, severity, group, from, to));
 });
 app.MapGet("/api/communication/serial-ports", () => Results.Json(System.IO.Ports.SerialPort.GetPortNames().Order().ToArray()));
+app.MapGet("/api/backup/sqlite", (ProjectStore db) =>
+    Results.File(db.CreateBackupBytes(), "application/vnd.sqlite3", $"viewx-backup-{DateTime.Now:yyyyMMdd-HHmmss}.db"));
+app.MapPost("/api/projects/{id}/versions/{revision:long}/label", async (string id, long revision, HttpRequest request, ProjectStore db) =>
+{
+    if (WriteError(request) is { } denied) return denied;
+    try
+    {
+        using var body = await JsonDocument.ParseAsync(request.Body, cancellationToken: request.HttpContext.RequestAborted);
+        if (body.RootElement.ValueKind != JsonValueKind.Object || !body.RootElement.TryGetProperty("label", out var label) || label.ValueKind != JsonValueKind.String || label.GetString()!.Length > 100)
+            return Results.Json(new { error = "版本標註格式錯誤（最多 100 字）" }, statusCode: 400);
+        return db.SetVersionLabel(id, revision, label.GetString()) ? Results.Json(new { revision, label = label.GetString() }) : Results.Json(new { error = "找不到版本" }, statusCode: 404);
+    }
+    catch (JsonException) { return Results.Json(new { error = "JSON 格式錯誤" }, statusCode: 400); }
+});
+app.MapPost("/api/projects/{id}/alarm-events/prune", async (string id, HttpRequest request, ProjectStore db, AlarmHistoryStore history) =>
+{
+    if (WriteError(request) is { } denied) return denied;
+    if (db.Get(id) is null) return Results.Json(new { error = "請先儲存專案" }, statusCode: 404);
+    try
+    {
+        using var body = await JsonDocument.ParseAsync(request.Body, cancellationToken: request.HttpContext.RequestAborted);
+        var root = body.RootElement;
+        int? Read(string name, int min, int max, out bool ok)
+        {
+            ok = true;
+            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(name, out var v)) return null;
+            if (v.ValueKind != JsonValueKind.Number || !v.TryGetInt32(out var n) || n < min || n > max) { ok = false; return null; }
+            return n;
+        }
+        var days = Read("maxDays", 1, 3650, out var okDays);
+        var records = Read("maxRecords", 100, 100000, out var okRecords);
+        if (!okDays || !okRecords || (days is null && records is null)) return Results.Json(new { error = "清理條件格式錯誤" }, statusCode: 400);
+        return Results.Json(new { deletedCount = history.Prune(id, days, records) });
+    }
+    catch (JsonException) { return Results.Json(new { error = "JSON 格式錯誤" }, statusCode: 400); }
+});
+app.MapPost("/api/communication/test", async (HttpRequest request) =>
+{
+    if (WriteError(request) is { } denied) return denied;
+    try
+    {
+        using var body = await JsonDocument.ParseAsync(request.Body, cancellationToken: request.HttpContext.RequestAborted);
+        var device = body.RootElement.Deserialize<CommunicationDevice>(CommunicationSettings.Json);
+        if (device is null) return Results.Json(new { error = "設備資料格式錯誤" }, statusCode: 400);
+        return Results.Json(await CommunicationRuntime.TestConnection(device, request.HttpContext.RequestAborted));
+    }
+    catch (JsonException) { return Results.Json(new { error = "JSON 格式錯誤" }, statusCode: 400); }
+});
 app.MapPost("/api/communication/sessions", async (HttpRequest request, CommunicationRuntime runtime) =>
 {
     if (WriteError(request) is { } denied) return denied;

@@ -57,6 +57,7 @@ export function ElementDataFields() {
               <option value="previousScreen">回上一畫面 (Return)</option>
               <option value="popup">開啟對話盒</option>
               <option value="closePopup">關閉對話盒</option>
+              <option value="confirmPopup">確認並套用對話盒 (Confirm)</option>
               {e.action === "openDialog" && (
                 <option value="openDialog">開啟對話盒</option>
               )}

@@ -11,7 +11,7 @@ import {
 } from "react";
 import type { Element, Project } from "../model";
 import { initialValues } from "../utils/project";
-import { openPopup, screenElements } from "../services/screenRules";
+import { openPopup, screenElements, isPopup } from "../services/screenRules";
 import { computeSystemValues } from "../services/systemVariables";
 type Options = {
   project: Project;
@@ -32,6 +32,10 @@ export function useSimulation({
   >("offline");
   const [mode, updateMode] = useState<"edit" | "preview" | "run">("edit");
   const [popupIds, updatePopupIds] = useState<string[]>([]);
+  // Staged values of transactional popups; only written to variables on confirmPopup.
+  const [popupDrafts, setPopupDrafts] = useState<
+    Record<string, Record<string, unknown>>
+  >({});
   const popupRef = useRef<string[]>([]);
   const [screenHistory, setScreenHistory] = useState<string[]>([]);
   const pressed = useRef<
@@ -46,6 +50,9 @@ export function useSimulation({
     releaseMomentary();
     popupRef.current = ids;
     updatePopupIds(ids);
+    setPopupDrafts((old) =>
+      Object.fromEntries(Object.entries(old).filter(([id]) => ids.includes(id))),
+    );
   }
   function setMode(next: "edit" | "preview" | "run") {
     if (next === "edit") setPopups([]);
@@ -54,19 +61,51 @@ export function useSimulation({
   function showPopup(id: string) {
     const next = openPopup(project, popupRef.current, id);
     if (!next) {
-      notify("對話盒不存在、已開啟或超過 16 層", true);
+      notify(
+        `對話盒不存在、已開啟或超過 ${project.maxPopupDepth ?? 16} 層`,
+        true,
+      );
       return;
     }
     setPopups(next);
   }
   function closePopup() {
+    const top = popupRef.current.at(-1);
+    if (top && Object.keys(popupDrafts[top] ?? {}).length)
+      notify("已捨棄對話盒變更");
     setPopups(popupRef.current.slice(0, -1));
   }
+  function isTransactional(sourceScreenId: string) {
+    const s = project.screens.find((item) => item.id === sourceScreenId);
+    return Boolean(s && isPopup(s) && s.popupCommitMode === "transactional");
+  }
+  function screenValues(sourceScreenId: string): Record<string, unknown> {
+    return isTransactional(sourceScreenId)
+      ? { ...values, ...popupDrafts[sourceScreenId] }
+      : values;
+  }
+  function stageOrWrite(sourceScreenId: string, id: string, value: unknown) {
+    if (!isTransactional(sourceScreenId)) return writeValue(id, value);
+    setPopupDrafts((old) => ({
+      ...old,
+      [sourceScreenId]: { ...old[sourceScreenId], [id]: value },
+    }));
+  }
+  function confirmPopup(sourceScreenId: string) {
+    const draft = popupDrafts[sourceScreenId] ?? {};
+    for (const [id, value] of Object.entries(draft)) writeValue(id, value);
+    setPopups(popupRef.current.filter((id) => id !== sourceScreenId));
+    notify("設定已套用，變數已寫入");
+  }
   function canOperate(e: Element, sourceScreenId: string): boolean {
-    const activeId = popupRef.current.at(-1) ?? screenId;
+    const top = popupRef.current.at(-1);
+    const activeId = top ?? screenId;
+    const nonModal =
+      project.screens.find((s) => s.id === top)?.popupModal === false &&
+      (sourceScreenId === screenId || popupRef.current.includes(sourceScreenId));
     return (
-      activeId === sourceScreenId &&
-      screenElements(project, activeId).some(
+      (activeId === sourceScreenId || nonModal) &&
+      screenElements(project, sourceScreenId).some(
         ({ element }) => element.id === e.id,
       ) &&
       e.visible &&
@@ -84,19 +123,19 @@ export function useSimulation({
     () =>
       online
         ? {
-            ...localValues,
-            ...Object.fromEntries(
-              project.variables
-                .filter((v) => v.modbus)
-                .map((v) => [
-                  v.id,
-                  communication.communicationSnapshot?.tags[v.id]?.quality ===
+          ...localValues,
+          ...Object.fromEntries(
+            project.variables
+              .filter((v) => v.modbus)
+              .map((v) => [
+                v.id,
+                communication.communicationSnapshot?.tags[v.id]?.quality ===
                   "good"
-                    ? communication.communicationSnapshot.tags[v.id].value
-                    : undefined,
-                ]),
-            ),
-          }
+                  ? communication.communicationSnapshot.tags[v.id].value
+                  : undefined,
+              ]),
+          ),
+        }
         : localValues,
     [
       online,
@@ -107,12 +146,12 @@ export function useSimulation({
   );
   const invalidVariableIds = online
     ? project.variables
-        .filter(
-          (v) =>
-            v.modbus &&
-            communication.communicationSnapshot?.tags[v.id]?.quality !== "good",
-        )
-        .map((v) => v.id)
+      .filter(
+        (v) =>
+          v.modbus &&
+          communication.communicationSnapshot?.tags[v.id]?.quality !== "good",
+      )
+      .map((v) => v.id)
     : [];
   const runtimeData = useRuntimeData(
     project,
@@ -140,6 +179,7 @@ export function useSimulation({
           "closeDialog",
           "popup",
           "closePopup",
+          "confirmPopup",
         ].includes(e.action));
     return Boolean(
       online &&
@@ -186,9 +226,14 @@ export function useSimulation({
     if (!running || !canOperate(e, sourceScreenId)) return;
     if ((e.enabledId && !values[e.enabledId]) || runtimeElementDisabled(e))
       return;
-    const result = evaluateAction(e, project, values);
+    const result = evaluateAction(e, project, screenValues(sourceScreenId));
     if ("error" in result) {
       notify(result.error, true);
+      return;
+    }
+    if ("confirmPopup" in result) {
+      if (isTransactional(sourceScreenId)) confirmPopup(sourceScreenId);
+      else closePopup();
       return;
     }
     if ("actionType" in result) {
@@ -207,7 +252,8 @@ export function useSimulation({
       setPopups([]);
       setScreenHistory((old) => [...old, screenId]);
       setScreenId(result.screenId);
-    } else writeValue(result.variableId, result.value);
+    } else if (e.action === "momentary") writeValue(result.variableId, result.value);
+    else stageOrWrite(sourceScreenId, result.variableId, result.value);
     setLogs((l) => [`${e.name} · 動作：${e.action}`, ...l].slice(0, 50));
   }
   function momentaryAction(e: Element, down: boolean, sourceScreenId: string) {
@@ -255,7 +301,7 @@ export function useSimulation({
       );
       if (deviceError) return deviceError;
     }
-    writeValue(variable.id, parseNumber(raw)!);
+    stageOrWrite(sourceScreenId, variable.id, parseNumber(raw)!);
     setLogs((old) => [`${e.name} · 輸入：${raw}`, ...old].slice(0, 50));
     return undefined;
   }
@@ -269,7 +315,7 @@ export function useSimulation({
         online &&
         project.variables.some((v) => v.id === e.variableId && v.modbus) &&
         communication.communicationSnapshot?.tags[e.variableId!]?.quality !==
-          "good",
+        "good",
       ),
     writeValue,
     mode,
@@ -283,6 +329,9 @@ export function useSimulation({
     popupIds,
     showPopup,
     closePopup,
+    popupDrafts,
+    confirmPopup,
+    screenValues,
     activeDialogId: popupIds.at(-1) ?? null,
     closeActiveDialog: closePopup,
     momentaryAction,

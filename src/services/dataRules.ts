@@ -30,6 +30,7 @@ export function bindingTypes(e: Element): Variable["type"][] {
         "closeDialog",
         "popup",
         "closePopup",
+        "confirmPopup",
       ].includes(e.action)
     )
       return [];
@@ -88,6 +89,7 @@ export function bindingProblems(e: Element, project: Project): string[] {
       "closeDialog",
       "popup",
       "closePopup",
+      "confirmPopup",
     ].includes(e.action);
   const required =
     [
@@ -208,6 +210,7 @@ export function actionPatch(
       "closeDialog",
       "popup",
       "closePopup",
+      "confirmPopup",
     ].includes(action)
       ? undefined
       : variable?.id,
@@ -234,6 +237,7 @@ export function evaluateAction(
   | { screenId: string }
   | { popupId: string }
   | { closePopup: true }
+  | { confirmPopup: true }
   | { actionType: "previousScreen" | "closeDialog" }
   | { actionType: "openDialog"; dialogId: string }
   | { variableId: string; value: number | boolean | string } {
@@ -251,6 +255,8 @@ export function evaluateAction(
     return { popupId: e.targetScreenId! };
   if (e.kind === "button" && e.action === "closePopup")
     return { closePopup: true };
+  if (e.kind === "button" && e.action === "confirmPopup")
+    return { confirmPopup: true };
   const variable = project.variables.find((v) => v.id === e.variableId);
   if (!variable) return { error: "元件未綁定有效變數" };
   let value: number | boolean | string;

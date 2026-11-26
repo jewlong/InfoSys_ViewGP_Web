@@ -6,7 +6,7 @@ namespace ViewX.Server;
 
 public sealed record ProjectSummary(string Id, string Name, long Revision,
     [property: JsonPropertyName("updated_at")] string UpdatedAt);
-public sealed record VersionSummary(long Revision, string CreatedAt);
+public sealed record VersionSummary(long Revision, string CreatedAt, string? Label = null);
 public sealed record StoredProject(JsonElement Project, long Revision, string UpdatedAt);
 public sealed record SaveResult(long Revision, string UpdatedAt);
 public sealed class RevisionConflictException() : Exception("專案已有新版本，請重新開啟或另存新專案。");
@@ -40,6 +40,15 @@ public sealed class ProjectStore
                 PRIMARY KEY(project_id, revision));
             """;
         command.ExecuteNonQuery();
+        // Non-destructive migration: optional label for important versions.
+        using var columns = connection.CreateCommand();
+        columns.CommandText = "SELECT COUNT(*) FROM pragma_table_info('versions') WHERE name='label'";
+        if (Convert.ToInt64(columns.ExecuteScalar()) == 0)
+        {
+            using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE versions ADD COLUMN label TEXT";
+            alter.ExecuteNonQuery();
+        }
     }
 
     private SqliteConnection Open()
@@ -76,12 +85,40 @@ public sealed class ProjectStore
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT revision,created_at FROM versions WHERE project_id=$id ORDER BY revision DESC";
+        command.CommandText = "SELECT revision,created_at,label FROM versions WHERE project_id=$id ORDER BY revision DESC";
         command.Parameters.AddWithValue("$id", id);
         using var reader = command.ExecuteReader();
         var result = new List<VersionSummary>();
-        while (reader.Read()) result.Add(new(reader.GetInt64(0), reader.GetString(1)));
+        while (reader.Read()) result.Add(new(reader.GetInt64(0), reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2)));
         return result;
+    }
+
+    public bool SetVersionLabel(string id, long revision, string? label)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE versions SET label=$label WHERE project_id=$id AND revision=$revision";
+        command.Parameters.AddWithValue("$label", string.IsNullOrWhiteSpace(label) ? DBNull.Value : label.Trim());
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$revision", revision);
+        return command.ExecuteNonQuery() > 0;
+    }
+
+    // Consistent online backup of the whole database (projects, versions, alarm history).
+    public byte[] CreateBackupBytes()
+    {
+        var temp = Path.Combine(Path.GetTempPath(), $"viewx-backup-{Guid.NewGuid():N}.db");
+        try
+        {
+            using (var source = Open())
+            using (var target = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = temp, Pooling = false }.ToString()))
+            {
+                target.Open();
+                source.BackupDatabase(target);
+            }
+            return File.ReadAllBytes(temp);
+        }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 
     public StoredProject? GetVersion(string id, long revision)

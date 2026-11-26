@@ -18,6 +18,9 @@ export function useEditorShortcuts(editor: EditorCore) {
     remove,
     copy,
     paste,
+    duplicate,
+    patch,
+    current,
   } = editor;
   useEffect(() => {
     function key(e: KeyboardEvent) {
@@ -42,13 +45,19 @@ export function useEditorShortcuts(editor: EditorCore) {
       if (running || dialog) return;
       if (mod) {
         const k = e.key.toLowerCase();
-        if (["z", "y", "c", "v", "x", "a"].includes(k)) e.preventDefault();
+        if (["z", "y", "c", "v", "x", "a", "d", "g", "l"].includes(k)) e.preventDefault();
         if (k === "z") e.shiftKey ? redo() : undo();
         if (k === "y") redo();
         if (k === "c") copy();
         if (k === "x") copy(true);
         if (k === "v") paste();
         if (k === "a") setSelected(screen.elements.map((e) => e.id));
+        if (k === "d") duplicate();
+        if (k === "g") {
+          if (e.shiftKey) patch({ groupId: undefined });
+          else if (selected.length > 1) patch({ groupId: crypto.randomUUID() });
+        }
+        if (k === "l" && selected.length) patch({ locked: !current?.locked });
       } else if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         remove();

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   demoProject,
   uid,
@@ -54,6 +54,9 @@ export function useEditorCore() {
     popupIds,
     showPopup,
     closePopup,
+    popupDrafts,
+    confirmPopup,
+    screenValues,
     alarmSession,
     alarmRuntimeProblems,
     communicationMode,
@@ -149,11 +152,16 @@ export function useEditorCore() {
     if (!running) historyState.change(fn);
   }
   function undo() {
-    if (!running && historyState.undo()) setSelected([]);
+    if (!running) historyState.undo();
   }
   function redo() {
-    if (!running && historyState.redo()) setSelected([]);
+    if (!running) historyState.redo();
   }
+  // Keep the selection across undo/redo; drop ids that no longer exist.
+  useEffect(() => {
+    const ids = new Set(project.screens.flatMap((s) => s.elements.map((e) => e.id)));
+    setSelected((old) => (old.every((id) => ids.has(id)) ? old : old.filter((id) => ids.has(id))));
+  }, [project]);
   function check() {
     return checkProject(project);
   }
@@ -268,9 +276,15 @@ export function useEditorCore() {
       notify(`已${cut ? "剪下" : "複製"} ${items.length} 個元件`);
   }
   function paste() {
-    if (!clipboard.length) return;
+    pasteItems(clipboard);
+  }
+  function duplicate() {
+    pasteItems(clone(screen.elements.filter((e) => selected.includes(e.id))));
+  }
+  function pasteItems(source: Element[]) {
+    if (!source.length) return;
     const groups = new Map<string, string>();
-    const items = clipboard.map((e) => {
+    const items = source.map((e) => {
       if (e.groupId && !groups.has(e.groupId)) groups.set(e.groupId, uid());
       const item = clone(e);
       if (item.imageAssetId) {
@@ -640,6 +654,10 @@ export function useEditorCore() {
     popupIds,
     showPopup,
     closePopup,
+    popupDrafts,
+    confirmPopup,
+    screenValues,
+    duplicate,
     setScreenType,
     setParentScreen,
     align,

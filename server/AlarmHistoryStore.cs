@@ -107,6 +107,34 @@ public sealed class AlarmHistoryStore
             """;
         command.ExecuteNonQuery(); transaction.Commit(); return true;
     }
+    // Only cleared events are removed; active alarms are always kept.
+    public int Prune(string projectId, int? maxDays, int? maxRecords)
+    {
+        using var db = Open(); using var transaction = db.BeginTransaction(deferred: false);
+        var deleted = 0;
+        if (maxDays is > 0)
+        {
+            using var byAge = db.CreateCommand(); byAge.Transaction = transaction;
+            byAge.CommandText = "DELETE FROM alarm_events WHERE project_id=$project AND cleared_at IS NOT NULL AND cleared_at<$cutoff";
+            byAge.Parameters.AddWithValue("$project", projectId);
+            byAge.Parameters.AddWithValue("$cutoff", DateTimeOffset.UtcNow.AddDays(-maxDays.Value).ToUnixTimeMilliseconds());
+            deleted += byAge.ExecuteNonQuery();
+        }
+        if (maxRecords is > 0)
+        {
+            using var byCount = db.CreateCommand(); byCount.Transaction = transaction;
+            byCount.CommandText = """
+                DELETE FROM alarm_events WHERE project_id=$project AND cleared_at IS NOT NULL AND id NOT IN (
+                    SELECT id FROM alarm_events WHERE project_id=$project AND cleared_at IS NOT NULL
+                    ORDER BY raised_at DESC, id DESC LIMIT $max)
+                """;
+            byCount.Parameters.AddWithValue("$project", projectId);
+            byCount.Parameters.AddWithValue("$max", maxRecords.Value);
+            deleted += byCount.ExecuteNonQuery();
+        }
+        transaction.Commit();
+        return deleted;
+    }
     public AlarmHistoryPage List(string projectId, int offset, int limit, string? search = null, string? severity = null, string? group = null, long? from = null, long? to = null)
     {
         using var db = Open(); using var command = db.CreateCommand();
