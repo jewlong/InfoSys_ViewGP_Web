@@ -34,7 +34,28 @@ export async function saveProject(
   return data;
 }
 
-export type VersionRow = { revision: number; createdAt: string };
+export type VersionRow = {
+  revision: number;
+  createdAt: string;
+  label?: string | null;
+};
+export async function updateVersionLabel(
+  id: string,
+  revision: number,
+  label: string,
+): Promise<{ revision: number; label: string }> {
+  const response = await fetch(
+    `/api/projects/${encodeURIComponent(id)}/versions/${revision}/label`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error ?? "無法更新版本標註");
+  return data;
+}
 export async function listVersions(id: string): Promise<VersionRow[]> {
   const response = await fetch(
     `/api/projects/${encodeURIComponent(id)}/versions`,

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { screenElements } from "../../services/screenRules";
-import { diffProjects } from "../../utils/projectDiff";
+import { diffProjects, type ProjectDiffSummary } from "../../utils/projectDiff";
 import { useEditorContext } from "../../context/EditorContext";
 import * as api from "../../services/projectApi";
 import type { Project } from "../../model";
@@ -19,7 +19,8 @@ export function VersionHistoryDialog() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [diffMode, setDiffMode] = useState(false);
-  const [diffResult, setDiffResult] = useState<any>(null);
+  const [diffResult, setDiffResult] = useState<ProjectDiffSummary | null>(null);
+  const [labelDraft, setLabelDraft] = useState("");
   const request = useRef(0);
   useEffect(() => {
     let active = true;
@@ -46,6 +47,9 @@ export function VersionHistoryDialog() {
       if (token === request.current) {
         setPreview(data);
         setScreenId(data.project.startScreenId);
+        setLabelDraft(
+          rows.find((r) => r.revision === source)?.label ?? "",
+        );
       }
     } catch (e) {
       if (token === request.current) setError(String(e));
@@ -99,6 +103,7 @@ export function VersionHistoryDialog() {
               onClick={() => void select(row.revision)}
             >
               版本 {row.revision}
+              {row.label ? ` · ${row.label}` : ""}
               <small>{new Date(row.createdAt).toLocaleString("zh-TW")}</small>
             </button>
           ))}
@@ -175,6 +180,40 @@ export function VersionHistoryDialog() {
                   </div>
                 </div>
               )}
+              <div style={{ display: "flex", gap: 8, margin: "8px 0", alignItems: "center" }}>
+                <input
+                  aria-label="版本標註"
+                  placeholder="標註重要版本（例如：出廠驗收版）"
+                  maxLength={100}
+                  value={labelDraft}
+                  onChange={(e) => setLabelDraft(e.target.value)}
+                />
+                <button
+                  className="secondary-btn"
+                  disabled={busy}
+                  onClick={() => {
+                    void api
+                      .updateVersionLabel(
+                        project.id,
+                        preview.revision,
+                        labelDraft,
+                      )
+                      .then((res) => {
+                        setRows((old) =>
+                          old.map((r) =>
+                            r.revision === res.revision
+                              ? { ...r, label: res.label }
+                              : r,
+                          ),
+                        );
+                        editor.notify("已更新版本標註");
+                      })
+                      .catch((e) => setError(String(e)));
+                  }}
+                >
+                  儲存標註
+                </button>
+              </div>
               <button
                 className="primary-btn"
                 disabled={busy || editor.saving}

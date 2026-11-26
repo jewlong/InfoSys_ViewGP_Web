@@ -65,6 +65,7 @@ export function CanvasEditor() {
     moveMarquee,
     endMarquee,
     cancelMarquee,
+    alignmentGuides,
     popupIds,
     notify,
     alarmHistoryPending,
@@ -325,6 +326,29 @@ export function CanvasEditor() {
                     aria-hidden="true"
                   />
                 )}
+                {!running &&
+                  alignmentGuides?.map((g, idx) => (
+                    <div
+                      key={`${g.axis}-${g.position}-${idx}`}
+                      className={`alignment-guide alignment-guide-${g.axis}`}
+                      aria-hidden="true"
+                      style={
+                        g.axis === "x"
+                          ? {
+                              left: g.position,
+                              top: g.start,
+                              width: 1,
+                              height: g.end - g.start,
+                            }
+                          : {
+                              left: g.start,
+                              top: g.position,
+                              width: g.end - g.start,
+                              height: 1,
+                            }
+                      }
+                    />
+                  ))}
               </div>
             </div>
           </div>

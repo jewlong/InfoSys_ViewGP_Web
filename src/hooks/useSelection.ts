@@ -7,6 +7,10 @@ import {
   type SetStateAction,
 } from "react";
 import type { Element, Project, Screen } from "../model";
+import {
+  computeAlignmentGuides,
+  type AlignmentGuide,
+} from "../utils/alignmentGuides";
 import { clone } from "../utils/project";
 type Options = {
   project: Project;
@@ -27,6 +31,7 @@ export function useSelection({
   recordSnapshot,
 }: Options) {
   const [selected, setSelected] = useState<string[]>([]);
+  const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([]);
   const dragRef = useRef<{
     x: number;
     y: number;
@@ -186,6 +191,16 @@ export function useSelection({
       e.x = Math.round(e.x + offsetX);
       e.y = Math.round(e.y + offsetY);
     });
+    const others = s.elements.filter(
+      (e) => e.visible && !d.ids.includes(e.id),
+    );
+    const { guides } = computeAlignmentGuides(
+      movable,
+      others,
+      s.width,
+      s.height,
+    );
+    setAlignmentGuides(guides);
     setProject(p);
   }
   function endDrag() {
@@ -194,6 +209,7 @@ export function useSelection({
       recordSnapshot(d.snapshot);
     }
     dragRef.current = null;
+    setAlignmentGuides([]);
   }
   function beginResize(
     ev: ReactPointerEvent<HTMLSpanElement>,
@@ -262,5 +278,6 @@ export function useSelection({
     moveMarquee,
     endMarquee,
     cancelMarquee,
+    alignmentGuides,
   };
 }

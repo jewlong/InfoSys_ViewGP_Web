@@ -113,6 +113,7 @@ export function groupedWidgets(search = "") {
       kinds: (Object.keys(widgetRegistry) as Kind[]).filter(
         (kind) => {
           const def = widgetRegistry[kind];
+          if (def.category !== category.id) return false;
           const keywordsText = (def.keywords ?? []).join(" ");
           return (
             `${category.label} ${def.label} ${kind} ${keywordsText}`

@@ -309,6 +309,12 @@ test("LVGL editing widgets (slider, arc, spinbox, dropdown) enforce numeric vari
       m.includes("最小值不可大於最大值"),
     ),
   );
+  const confirmBtn = {
+    ...makeElement("button"),
+    action: "confirmPopup",
+  };
+  assert.deepEqual(bindingProblems(confirmBtn, p), []);
+  assert.deepEqual(evaluateAction(confirmBtn, p, {}), { confirmPopup: true });
 });
 
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronRight, Check, Plus } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
-import { newProject, validateProject } from "../../model";
+import { validateProject } from "../../model";
 import { createProjectFromTemplate } from "../../services/projectTemplates";
 import { Field, NumberField } from "../ui/Controls";
 
@@ -16,11 +16,9 @@ const TEMPLATES: { id: "blank" | "pump" | "alarm" | "trend"; label: string; desc
 
 export function ProjectWizardDialog() {
   const {
-    project,
     resetProject,
     change,
     notify,
-    start,
     setDialog,
   } = useEditorContext();
   const [step, setStep] = useState<WizardStep>(1);

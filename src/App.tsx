@@ -15,7 +15,10 @@ export default function App() {
   return (
     <EditorProvider value={editor}>
       <div
-        className="app-shell engineering-shell"
+        className={
+          "app-shell" +
+          (editor.theme === "engineering" ? " engineering-shell" : "")
+        }
         onPointerDown={() => {
           if (editor.menu) editor.setMenu(null);
         }}

@@ -5,6 +5,9 @@ import {
   getLvglWasm,
   packRgbaLe,
 } from "../src/services/lvglWasmRuntime.ts";
+import { createProjectFromTemplate } from "../src/services/projectTemplates.ts";
+import { diffProjects } from "../src/utils/projectDiff.ts";
+import { computeAlignmentGuides } from "../src/utils/alignmentGuides.ts";
 test("demo round-trips through versioned JSON schema", () =>
   assert.ok(validateProject(JSON.parse(JSON.stringify(demoProject())))));
 test("rejects malformed imports and unsupported schema versions", () => {
@@ -149,4 +152,35 @@ test("LVGL v9 widgets (slider, arc, spinbox, dropdown) and WASM runtime instanti
   const dropdown = makeElement("dropdown");
   p.screens[0].elements.push(slider, arc, spinbox, dropdown);
   assert.ok(validateProject(JSON.parse(JSON.stringify(p))));
+});
+
+test("AIS-49 optional schema extensions, templates, diffProjects and alignmentGuides validate", () => {
+  for (const templateId of ["blank", "pump", "alarm", "trend"]) {
+    const p = createProjectFromTemplate({
+      name: `範本-${templateId}`,
+      templateId,
+      width: 960,
+      height: 600,
+      autoSave: true,
+      transport: "tcp",
+      tcpHost: "127.0.0.1",
+      tcpPort: 502,
+    });
+    p.alarmRetention = { maxDays: 30, maxRecords: 5000, autoPrune: true };
+    p.screens[0].popupCommitMode = "transactional";
+    p.screens[0].popupModal = false;
+    assert.ok(validateProject(JSON.parse(JSON.stringify(p))), templateId);
+  }
+
+  const base = demoProject();
+  const next = structuredClone(base);
+  next.variables.push({ id: "v-new", name: "新變數", type: "number", initial: 10 });
+  const diff = diffProjects(base, next);
+  assert.deepEqual(diff.variables.added, ["新變數"]);
+  assert.ok(diff.totalChanges >= 1);
+
+  const e1 = makeElement("rectangle", 100, 100);
+  const e2 = makeElement("rectangle", 102, 250);
+  const guides = computeAlignmentGuides([e2], [e1], 960, 600, 4);
+  assert.ok(guides.guides.some((g) => g.axis === "x" && g.position === 100));
 });

@@ -17,6 +17,7 @@ import { ManagementDialog } from "./ManagementDialog";
 import { AlarmEventTable } from "./AlarmEventTable";
 
 export function AlarmManagementDialog() {
+  const editor = useEditorContext();
   const {
     project,
     change,

@@ -84,6 +84,9 @@ export function useEditorCore() {
     [menu, setMenu] = useState<string | null>(null),
     [dialog, setDialog] = useState<Dialog>(null);
   const [bottom, setBottom] = useState(false);
+  const [theme, setTheme] = useState<"engineering" | "humanized">(
+    "engineering",
+  );
   const [variableDraft, setVariableDraft] = useState<Variable | null>(null),
     [variableSearch, setVariableSearch] = useState("");
   const [clipboard, setClipboard] = useState<Element[]>([]);
@@ -103,6 +106,7 @@ export function useEditorCore() {
     moveMarquee,
     endMarquee,
     cancelMarquee,
+    alignmentGuides,
   } = useSelection({
     project,
     screen,
@@ -606,6 +610,9 @@ export function useEditorCore() {
     setLogs,
     bottom,
     setBottom,
+    theme,
+    setTheme,
+    alignmentGuides,
     saving,
     rows,
     loading,

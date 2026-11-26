@@ -171,6 +171,14 @@ export function createEditorMenus(editor: EditorCore): MenuItems {
         label: (bottom ? "✓ " : "") + "執行紀錄",
         fn: () => setBottom(!bottom),
       },
+      {
+        label:
+          (editor.theme === "humanized" ? "✓ " : "") + "人性化淺色主題",
+        fn: () =>
+          editor.setTheme(
+            editor.theme === "humanized" ? "engineering" : "humanized",
+          ),
+      },
     ],
     畫面: [
       { label: "新增畫面", fn: () => newScreen() },

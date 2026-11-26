@@ -1,11 +1,10 @@
-import type {
-  Project,
-  Screen,
-  Variable,
-  CommunicationDevice as Device,
-  Element,
-  Kind,
-  Action,
+import {
+  makeElement,
+  uid,
+  type CommunicationDevice,
+  type Project,
+  type Screen,
+  type Variable,
 } from "../model";
 
 export type ProjectTemplateId = "blank" | "pump" | "alarm" | "trend";
@@ -22,122 +21,6 @@ export interface ProjectTemplateOptions {
   tcpPort?: number;
   rtuPort?: string;
   rtuBaud?: number;
-}
-
-function makeElement(
-  kind: Kind,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  overrides: Partial<Element> = {},
-): Element {
-  return {
-    id: crypto.randomUUID(),
-    kind,
-    name: "",
-    x,
-    y,
-    width,
-    height,
-    text: "",
-    color: "#000000",
-    background: "#ffffff",
-    fontSize: 12,
-    action: "toggle",
-    actionValue: "",
-    locked: false,
-    visible: true,
-    ...overrides,
-  };
-}
-
-function blankScreen(width: number, height: number): Screen {
-  return {
-    id: "screen-main",
-    name: "主畫面",
-    width,
-    height,
-    background: "#ffffff",
-    elements: [],
-  };
-}
-
-function pumpScreen(width: number, height: number): Screen {
-  return {
-    id: "screen-pump",
-    name: "泵浦監控",
-    width,
-    height,
-    background: "#f5f6fa",
-    elements: [
-      makeElement("text", 20, 20, 300, 30, {
-        name: "標題",
-        text: "泵浦與馬達監控",
-        fontSize: 16,
-      }),
-      makeElement("indicator", 20, 70, 40, 40, {
-        name: "狀態燈",
-        background: "#54b998",
-      }),
-      makeElement("gauge", 80, 70, 140, 140, {
-        name: "溫度錶頭",
-        text: "",
-        color: "#54b998",
-        background: "#ffffff",
-        fontSize: 12,
-      }),
-      makeElement("button", 240, 70, 100, 50, {
-        name: "JOG 點動",
-        text: "JOG 點動",
-        action: "momentary",
-        actionValue: "true",
-        background: "#0284c7",
-        color: "#ffffff",
-        fontSize: 12,
-      }),
-    ],
-  };
-}
-
-function alarmScreen(width: number, height: number): Screen {
-  return {
-    id: "screen-alarm",
-    name: "警報監控",
-    width,
-    height,
-    background: "#f5f6fa",
-    elements: [
-      makeElement("text", 20, 20, 300, 30, {
-        name: "標題",
-        text: "全域警報監控中心",
-        fontSize: 16,
-      }),
-      makeElement("alarm", 20, 70, 400, 200, {
-        name: "警報清單",
-      }),
-    ],
-  };
-}
-
-function trendScreen(width: number, height: number): Screen {
-  return {
-    id: "screen-trend",
-    name: "趨勢看板",
-    width,
-    height,
-    background: "#f5f6fa",
-    elements: [
-      makeElement("text", 20, 20, 300, 30, {
-        name: "標題",
-        text: "產線多曲線趨勢與產量統計",
-        fontSize: 16,
-      }),
-      makeElement("trend", 20, 70, 500, 300, {
-        name: "趨勢圖",
-      }),
-    ],
-  };
 }
 
 export function createProjectFromTemplate(
@@ -157,22 +40,141 @@ export function createProjectFromTemplate(
     rtuBaud,
   } = options;
 
-  const now = Date.now();
-  const screen =
-    templateId === "pump"
-      ? pumpScreen(width, height)
-      : templateId === "alarm"
-        ? alarmScreen(width, height)
-        : templateId === "trend"
-          ? trendScreen(width, height)
-          : blankScreen(width, height);
-
+  const mainScreenId = uid();
   const variables: Variable[] = [];
-  const devices: Device[] = [];
+  const screens: Screen[] = [];
 
+  if (templateId === "pump") {
+    const runVarId = uid();
+    const tempVarId = uid();
+    variables.push(
+      { id: runVarId, name: "泵浦運轉", type: "boolean", initial: false },
+      { id: tempVarId, name: "泵浦溫度", type: "number", initial: 36.5 },
+    );
+    screens.push({
+      id: mainScreenId,
+      name: "泵浦監控",
+      width,
+      height,
+      background: "#101c2e",
+      elements: [
+        {
+          ...makeElement("text", 32, 24),
+          name: "標題",
+          text: "泵浦與馬達監控",
+          width: 320,
+          height: 40,
+          fontSize: 24,
+        },
+        {
+          ...makeElement("indicator", 32, 84),
+          name: "狀態燈",
+          variableId: runVarId,
+        },
+        {
+          ...makeElement("gauge", 100, 84),
+          name: "溫度錶頭",
+          text: "泵浦溫度",
+          variableId: tempVarId,
+          unit: "°C",
+        },
+        {
+          ...makeElement("button", 340, 84),
+          name: "JOG 點動",
+          text: "JOG 點動",
+          variableId: runVarId,
+          action: "momentary",
+          actionValue: "true",
+          background: "#0284c7",
+        },
+      ],
+    });
+  } else if (templateId === "alarm") {
+    const wordVarId = uid();
+    const maskVarId = uid();
+    variables.push(
+      { id: wordVarId, name: "警報區 Word", type: "number", initial: 0 },
+      { id: maskVarId, name: "警報區 遮罩", type: "number", initial: 0 },
+    );
+    screens.push({
+      id: mainScreenId,
+      name: "警報監控",
+      width,
+      height,
+      background: "#101c2e",
+      elements: [
+        {
+          ...makeElement("text", 32, 24),
+          name: "標題",
+          text: "全域警報監控中心",
+          width: 340,
+          height: 40,
+          fontSize: 24,
+        },
+        {
+          ...makeElement("alarm", 32, 84),
+          name: "警報清單",
+          alarmSource: "all",
+          alarmRules: [
+            {
+              id: uid(),
+              message: "警報 Word 異常",
+              variableId: wordVarId,
+              operator: "gt",
+              threshold: 0,
+              severity: "warning",
+              enabled: true,
+            },
+          ],
+        },
+      ],
+    });
+  } else if (templateId === "trend") {
+    const flowVarId = uid();
+    variables.push({
+      id: flowVarId,
+      name: "產線流量",
+      type: "number",
+      initial: 50,
+    });
+    screens.push({
+      id: mainScreenId,
+      name: "趨勢看板",
+      width,
+      height,
+      background: "#101c2e",
+      elements: [
+        {
+          ...makeElement("text", 32, 24),
+          name: "標題",
+          text: "產線多曲線趨勢與產量統計",
+          width: 400,
+          height: 40,
+          fontSize: 24,
+        },
+        {
+          ...makeElement("trend", 32, 84),
+          name: "趨勢圖",
+          text: "流量趨勢",
+          variableId: flowVarId,
+        },
+      ],
+    });
+  } else {
+    screens.push({
+      id: mainScreenId,
+      name: "主畫面",
+      width,
+      height,
+      background: "#101c2e",
+      elements: [],
+    });
+  }
+
+  const devices: CommunicationDevice[] = [];
   if (transport === "tcp") {
     devices.push({
-      id: "dev-1",
+      id: uid(),
       name: "Modbus TCP 設備",
       transport: "tcp",
       host: tcpHost ?? "127.0.0.1",
@@ -184,7 +186,7 @@ export function createProjectFromTemplate(
     });
   } else if (transport === "rtu") {
     devices.push({
-      id: "dev-1",
+      id: uid(),
       name: "COM Modbus RTU 設備",
       transport: "rtu",
       serialPort: rtuPort ?? "COM1",
@@ -201,19 +203,15 @@ export function createProjectFromTemplate(
 
   return {
     schemaVersion: 1,
-    id: `proj-${now}`,
-    name,
+    id: uid(),
+    name: name || "未命名專案",
     description: description ?? "",
-    startScreenId: screen.id,
-    screens: [screen],
+    startScreenId: mainScreenId,
+    screens,
     variables,
-    devices,
-    alarmAreas: [],
-    alarmTicker: { enabled: true, position: "top", intervalMs: 3000 },
+    ...(devices.length ? { devices } : {}),
     autoSave,
-    autoSaveIntervalMs: autoSave ? 2000 : undefined,
+    ...(autoSave ? { autoSaveIntervalMs: 2000 } : {}),
     maxPopupDepth: 16,
-    createdAt: now.toString(),
-    updatedAt: now.toString(),
   };
 }

@@ -18,10 +18,18 @@ import {
   clearOfflineDraft,
   getLatestOfflineDraft,
   saveOfflineDraft,
-  type OfflineDraftRecord,
 } from "../services/offlineDraftStore";
 import type { Dialog, ProjectRow } from "../types/editor";
 import { clone } from "../utils/project";
+
+export type RecoverableDraftState = {
+  projectId: string;
+  project: Project;
+  baseRevision: number;
+  updatedAt: number;
+  draft: OfflineDraft;
+};
+
 type Options = {
   dialog: Dialog;
   running: boolean;
@@ -33,6 +41,7 @@ type Options = {
   resetProject: (project: Project, revision?: number, saved?: boolean) => void;
   notify: (text: string, error?: boolean) => void;
 };
+
 export function useProjectPersistence({
   project,
   dialog,
@@ -46,10 +55,8 @@ export function useProjectPersistence({
 }: Options) {
   const [revision, setRevision] = useState(0),
     [savedSnapshot, setSavedSnapshot] = useState("");
-  const [recoverableDraft, setRecoverableDraft] = useState<{
-    projectId: string;
-    draft: OfflineDraft;
-  } | null>(null);
+  const [recoverableDraft, setRecoverableDraft] =
+    useState<RecoverableDraftState | null>(null);
   const dirty = JSON.stringify(project) !== savedSnapshot;
   const [saving, setSaving] = useState(false),
     [rows, setRows] = useState<ProjectRow[]>([]),
@@ -59,9 +66,11 @@ export function useProjectPersistence({
   const latestSave = useRef(save);
   latestSave.current = save;
   const lastSaveAt = useRef(0);
+
   useEffect(() => {
     setAutoSaveError("");
   }, [project.id]);
+
   useEffect(() => {
     if (
       !project.autoSave ||
@@ -79,41 +88,62 @@ export function useProjectPersistence({
     );
     return () => window.clearTimeout(timer);
   }, [project, dirty, saving, running, dialog, autoSaveError]);
+
   // Offline draft: mirror unsaved edits to IndexedDB so a closed tab is recoverable.
-  const [recoverableDraft, setRecoverableDraft] =
-    useState<OfflineDraftRecord | null>(null);
   useEffect(() => {
     if (!dirty || running) return;
-    const timer = window.setTimeout(
-      () =>
-        void saveOfflineDraft({
-          projectId: project.id,
-          project,
-          baseRevision: revision,
-          updatedAt: Date.now(),
-        }),
-      1000,
-    );
+    const timer = window.setTimeout(() => {
+      const now = Date.now();
+      void saveOfflineDraft({
+        projectId: project.id,
+        project,
+        baseRevision: revision,
+        updatedAt: now,
+      });
+    }, 1000);
     return () => window.clearTimeout(timer);
   }, [project, dirty, running, revision]);
+
   useEffect(() => {
     void getLatestOfflineDraft().then((draft) => {
-      if (draft && JSON.stringify(draft.project) !== JSON.stringify(project))
-        setRecoverableDraft(draft);
+      if (draft && JSON.stringify(draft.project) !== JSON.stringify(project)) {
+        setRecoverableDraft({
+          projectId: draft.projectId,
+          project: draft.project,
+          baseRevision: draft.baseRevision,
+          updatedAt: draft.updatedAt,
+          draft: {
+            projectId: draft.projectId,
+            project: draft.project,
+            updatedAt: draft.updatedAt,
+          },
+        });
+      }
     });
     // Check once at application start.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   function recoverOfflineDraft() {
     if (!recoverableDraft) return;
-    resetProject(recoverableDraft.project, recoverableDraft.baseRevision, false);
+    resetProject(
+      recoverableDraft.project,
+      recoverableDraft.baseRevision,
+      false,
+    );
+    void clearOfflineDraft(recoverableDraft.projectId);
     setRecoverableDraft(null);
     notify("已復原離線草稿，請儲存專案");
   }
+
   function discardOfflineDraft() {
-    if (recoverableDraft) void clearOfflineDraft(recoverableDraft.projectId);
+    if (recoverableDraft) {
+      void clearOfflineDraft(recoverableDraft.projectId);
+      void deleteDraft(recoverableDraft.projectId).catch(() => {});
+    }
     setRecoverableDraft(null);
   }
+
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (dirty) {
@@ -126,8 +156,6 @@ export function useProjectPersistence({
   }, [dirty]);
 
   useEffect(() => {
-    // 頁面隱藏（關閉標籤頁、切換應用等）且有未儲存變更時，
-    // 盡量將草稿寫入 IndexedDB，供下次開啟專案復原。
     function onVisibilityChange() {
       if (
         document.hidden &&
@@ -137,13 +165,14 @@ export function useProjectPersistence({
         !dialog &&
         validateProject(project)
       ) {
-        void saveDraft(project.id, project);
+        void saveDraft(project.id, project).catch(() => {});
       }
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () =>
       document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [dirty, running, dialog, project, saveInFlight]);
+
   function guard() {
     if (saveInFlight.current) {
       notify("正在儲存，請稍候");
@@ -151,6 +180,7 @@ export function useProjectPersistence({
     }
     return !dirty || window.confirm("目前有未儲存的變更，確定離開此專案？");
   }
+
   async function save(asNew = false, automatic = false) {
     if (saveInFlight.current) return;
     if (!validateProject(project)) {
@@ -180,7 +210,7 @@ export function useProjectPersistence({
       void clearOfflineDraft(snapshot.id);
       setAutoSaveError("");
       lastSaveAt.current = Date.now();
-      await deleteDraft(project.id);
+      await deleteDraft(project.id).catch(() => {});
       notify(
         `${automatic ? "已自動儲存" : "已儲存至 SQLite"} · 版本 ${body.revision}`,
       );
@@ -191,13 +221,14 @@ export function useProjectPersistence({
       try {
         await saveDraft(project.id, project);
       } catch {
-        // IndexedDB 寫入失敗不影響主要錯誤回報
+        // Ignore IndexedDB error during save failure reporting
       }
     } finally {
       saveInFlight.current = false;
       setSaving(false);
     }
   }
+
   async function restore(sourceRevision: number) {
     if (saveInFlight.current) return;
     saveInFlight.current = true;
@@ -220,6 +251,7 @@ export function useProjectPersistence({
       setSaving(false);
     }
   }
+
   async function openProjects() {
     setDialog("projects");
     setLoading(true);
@@ -231,13 +263,19 @@ export function useProjectPersistence({
       setLoading(false);
     }
   }
+
   async function openProject(id: string) {
     if (!guard()) return;
     try {
-      // FR-4.2：下次開啟專案時，偵測本機 IndexedDB 離線草稿並主動提醒復原
-      const draft = await loadDraft(id);
+      const draft = await loadDraft(id).catch(() => undefined);
       if (draft) {
-        setRecoverableDraft({ projectId: id, draft });
+        setRecoverableDraft({
+          projectId: id,
+          project: draft.project,
+          baseRevision: 0,
+          updatedAt: draft.updatedAt,
+          draft,
+        });
         setDialog("offlineDraft");
         return;
       }
@@ -249,13 +287,13 @@ export function useProjectPersistence({
     }
   }
 
-  /** 以本機離線草稿覆蓋目前開啟的專案；草稿視為未儲存，開啟後仍須使用者儲存。 */
   async function restoreRecoverableDraft() {
     if (!recoverableDraft) return;
     const { projectId, draft } = recoverableDraft;
     try {
       resetProject(draft.project, 0, false);
-      await deleteDraft(projectId);
+      await deleteDraft(projectId).catch(() => {});
+      void clearOfflineDraft(projectId);
       setDialog(null);
       setRecoverableDraft(null);
       notify(
@@ -266,12 +304,12 @@ export function useProjectPersistence({
     }
   }
 
-  /** 捨捨離線草稿，改開啟伺服器中的專案版本。 */
   async function discardRecoverableDraft() {
     if (!recoverableDraft) return;
     const { projectId } = recoverableDraft;
     try {
-      await deleteDraft(projectId);
+      await deleteDraft(projectId).catch(() => {});
+      void clearOfflineDraft(projectId);
       setRecoverableDraft(null);
       setDialog(null);
       await openProject(projectId);
@@ -280,7 +318,6 @@ export function useProjectPersistence({
     }
   }
 
-  /** 取消開啟，保留離線草稿不動。 */
   function cancelRecoverableDraft() {
     setRecoverableDraft(null);
     setDialog(null);
@@ -290,6 +327,7 @@ export function useProjectPersistence({
     downloadProject(project);
     notify("專案已匯出");
   }
+
   async function importProject(file?: File) {
     if (!file) return;
     if (file.size > 20 * 1024 * 1024) {
@@ -307,11 +345,15 @@ export function useProjectPersistence({
       notify(String(e), true);
     }
   }
+
   return {
     restore,
     recoverableDraft,
     recoverOfflineDraft,
     discardOfflineDraft,
+    restoreRecoverableDraft,
+    discardRecoverableDraft,
+    cancelRecoverableDraft,
     autoSaveError,
     retryAutoSave: () => setAutoSaveError(""),
     revision,
@@ -328,9 +370,5 @@ export function useProjectPersistence({
     openProject,
     exportProject,
     importProject,
-    recoverableDraft,
-    restoreRecoverableDraft,
-    discardRecoverableDraft,
-    cancelRecoverableDraft,
   };
 }
